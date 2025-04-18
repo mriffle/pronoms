@@ -38,8 +38,8 @@ class MedianNormalizer:
         Parameters
         ----------
         X : Union[np.ndarray, List[List[float]]]
-            Input data matrix with shape (n_proteins, n_samples).
-            Each column represents a sample, each row represents a protein.
+            Input data matrix with shape (n_samples, n_features).
+            Each row represents a sample, each column represents a feature/protein.
         
         Returns
         -------
@@ -61,14 +61,14 @@ class MedianNormalizer:
                 "Input data contains NaN or Inf values. Please handle these values before normalization."
             )
         
-        # Calculate median for each sample (column)
-        medians = np.median(X, axis=0)
+        # Calculate median for each sample (row)
+        medians = np.median(X, axis=1, keepdims=True)
         
         # Avoid division by zero
         medians = np.where(medians == 0, 1.0, medians)
         
         # Store scaling factors
-        self.scaling_factors = medians
+        self.scaling_factors = medians.flatten()
         
         # Normalize each sample by its median
         normalized_data = X / medians
@@ -85,9 +85,9 @@ class MedianNormalizer:
         Parameters
         ----------
         before_data : np.ndarray
-            Data before normalization, shape (n_proteins, n_samples).
+            Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
-            Data after normalization, shape (n_proteins, n_samples).
+            Data after normalization, shape (n_samples, n_features).
         sample_names : Optional[List[str]], optional
             Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional

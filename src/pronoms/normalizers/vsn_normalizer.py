@@ -66,12 +66,12 @@ class VSNNormalizer:
         Parameters
         ----------
         X : Union[np.ndarray, List[List[float]]]
-            Input data matrix with shape (n_proteins, n_samples).
-            Each column represents a sample, each row represents a protein.
+            Input data matrix with shape (n_samples, n_features).
+            Each row represents a sample, each column represents a feature/protein.
         protein_ids : Optional[List[str]], optional
-            Protein identifiers, by default None (uses row indices).
+            Protein/feature identifiers, by default None (uses column indices).
         sample_ids : Optional[List[str]], optional
-            Sample identifiers, by default None (uses column indices).
+            Sample identifiers, by default None (uses row indices).
         
         Returns
         -------
@@ -95,26 +95,30 @@ class VSNNormalizer:
         
         # Generate default IDs if not provided
         if protein_ids is None:
-            protein_ids = [f"Protein_{i}" for i in range(X.shape[0])]
+            protein_ids = [f"Protein_{i}" for i in range(X.shape[1])]
         
         if sample_ids is None:
-            sample_ids = [f"Sample_{i}" for i in range(X.shape[1])]
+            sample_ids = [f"Sample_{i}" for i in range(X.shape[0])]
         
         # Create R script for VSN normalization
         r_script = self._create_vsn_script()
         
         try:
-            # Run R script
+            # Transpose data for R script since VSN expects proteins as rows
+            # and samples as columns in the R environment
+            X_transposed = X.T
+            
+            # Run R script with transposed data
             results = run_r_script(
                 r_script,
-                data=X,
+                data=X_transposed,
                 row_names=protein_ids,
                 col_names=sample_ids
             )
             
-            # Extract normalized data
+            # Extract normalized data and transpose back to original orientation
             if 'normalized_data' in results:
-                normalized_data = results['normalized_data']
+                normalized_data = results['normalized_data'].T
             else:
                 raise ValueError("VSN normalization failed to return normalized data")
             
@@ -184,9 +188,9 @@ class VSNNormalizer:
         Parameters
         ----------
         before_data : np.ndarray
-            Data before normalization, shape (n_proteins, n_samples).
+            Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
-            Data after normalization, shape (n_proteins, n_samples).
+            Data after normalization, shape (n_samples, n_features).
         sample_names : Optional[List[str]], optional
             Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional
@@ -218,13 +222,13 @@ class VSNNormalizer:
         # This is a key diagnostic for VSN normalization
         fig2, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
         
-        # Calculate mean and standard deviation for each protein before normalization
-        mean_before = np.nanmean(before_data, axis=1)
-        std_before = np.nanstd(before_data, axis=1)
+        # Calculate mean and standard deviation for each feature before normalization
+        mean_before = np.nanmean(before_data, axis=0)
+        std_before = np.nanstd(before_data, axis=0)
         
-        # Calculate mean and standard deviation for each protein after normalization
-        mean_after = np.nanmean(after_data, axis=1)
-        std_after = np.nanstd(after_data, axis=1)
+        # Calculate mean and standard deviation for each feature after normalization
+        mean_after = np.nanmean(after_data, axis=0)
+        std_after = np.nanstd(after_data, axis=0)
         
         # Plot mean vs standard deviation before normalization
         ax1.scatter(mean_before, std_before, alpha=0.5, s=5)

@@ -63,12 +63,12 @@ class DirectLFQNormalizer:
         Parameters
         ----------
         X : Union[np.ndarray, List[List[float]]]
-            Input data matrix with shape (n_proteins, n_samples).
-            Each column represents a sample, each row represents a protein.
+            Input data matrix with shape (n_samples, n_features).
+            Each row represents a sample, each column represents a feature/protein.
         protein_ids : Optional[List[str]], optional
-            Protein identifiers, by default None (uses row indices).
+            Protein/feature identifiers, by default None (uses column indices).
         sample_ids : Optional[List[str]], optional
-            Sample identifiers, by default None (uses column indices).
+            Sample identifiers, by default None (uses row indices).
         
         Returns
         -------
@@ -92,26 +92,30 @@ class DirectLFQNormalizer:
         
         # Generate default IDs if not provided
         if protein_ids is None:
-            protein_ids = [f"Protein_{i}" for i in range(X.shape[0])]
+            protein_ids = [f"Protein_{i}" for i in range(X.shape[1])]
         
         if sample_ids is None:
-            sample_ids = [f"Sample_{i}" for i in range(X.shape[1])]
+            sample_ids = [f"Sample_{i}" for i in range(X.shape[0])]
         
         # Create R script for DirectLFQ normalization
         r_script = self._create_directlfq_script()
         
         try:
-            # Run R script
+            # Transpose data for R script since DirectLFQ expects proteins as rows
+            # and samples as columns in the R environment
+            X_transposed = X.T
+            
+            # Run R script with transposed data
             results = run_r_script(
                 r_script,
-                data=X,
+                data=X_transposed,
                 row_names=protein_ids,
                 col_names=sample_ids
             )
             
-            # Extract normalized data
+            # Extract normalized data and transpose back to original orientation
             if 'normalized_data' in results:
-                normalized_data = results['normalized_data']
+                normalized_data = results['normalized_data'].T
             else:
                 raise ValueError("DirectLFQ normalization failed to return normalized data")
             
@@ -191,9 +195,9 @@ class DirectLFQNormalizer:
         Parameters
         ----------
         before_data : np.ndarray
-            Data before normalization, shape (n_proteins, n_samples).
+            Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
-            Data after normalization, shape (n_proteins, n_samples).
+            Data after normalization, shape (n_samples, n_features).
         sample_names : Optional[List[str]], optional
             Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional

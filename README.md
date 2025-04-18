@@ -34,7 +34,7 @@ import numpy as np
 from pronoms.normalizers import MedianNormalizer
 
 # Create sample data
-data = np.random.rand(100, 5)  # 100 proteins, 5 samples
+data = np.random.rand(5, 100)  # 5 samples, 100 proteins/features
 
 # Create normalizer and apply normalization
 normalizer = MedianNormalizer()
@@ -45,11 +45,18 @@ normalizer.plot_comparison(data, normalized_data)
 ```
 
 ### Available Normalizers
-- `MedianNormalizer`: Normalizes data by scaling each sample by its median
+- `MedianNormalizer`: Normalizes data by scaling each sample (row) by its median
 - `QuantileNormalizer`: Applies quantile normalization across samples
-- `L1Normalizer`: Normalizes data by scaling each sample to have an L1 norm of 1
+- `L1Normalizer`: Normalizes data by scaling each sample (row) to have an L1 norm of 1
 - `DirectLFQNormalizer`: Implements DirectLFQ normalization (requires R)
 - `VSNNormalizer`: Implements Variance Stabilizing Normalization (requires R)
+
+### Data Format
+All normalizers expect data in the format of a 2D numpy array or pandas DataFrame with shape `(n_samples, n_features)` where:
+- Each **row** represents a sample
+- Each **column** represents a protein/feature
+
+This follows the standard convention used in scikit-learn and other Python data science libraries.
 
 ## R Integration
 For normalizers that use R (DirectLFQ, VSN), ensure R is properly installed and accessible. The library uses `rpy2` to interface with R.

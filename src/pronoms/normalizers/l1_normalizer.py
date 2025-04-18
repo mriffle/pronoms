@@ -37,8 +37,8 @@ class L1Normalizer:
         Parameters
         ----------
         X : Union[np.ndarray, List[List[float]]]
-            Input data matrix with shape (n_proteins, n_samples).
-            Each column represents a sample, each row represents a protein.
+            Input data matrix with shape (n_samples, n_features).
+            Each row represents a sample, each column represents a feature/protein.
         
         Returns
         -------
@@ -60,14 +60,14 @@ class L1Normalizer:
                 "Input data contains NaN or Inf values. Please handle these values before normalization."
             )
         
-        # Calculate L1 norm (sum of absolute values) for each sample (column)
-        l1_norms = np.sum(np.abs(X), axis=0)
+        # Calculate L1 norm (sum of absolute values) for each sample (row)
+        l1_norms = np.sum(np.abs(X), axis=1, keepdims=True)
         
         # Avoid division by zero
         l1_norms = np.where(l1_norms == 0, 1.0, l1_norms)
         
         # Store scaling factors
-        self.scaling_factors = l1_norms
+        self.scaling_factors = l1_norms.flatten()
         
         # Normalize each sample by its L1 norm
         normalized_data = X / l1_norms
@@ -84,9 +84,9 @@ class L1Normalizer:
         Parameters
         ----------
         before_data : np.ndarray
-            Data before normalization, shape (n_proteins, n_samples).
+            Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
-            Data after normalization, shape (n_proteins, n_samples).
+            Data after normalization, shape (n_samples, n_features).
         sample_names : Optional[List[str]], optional
             Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional

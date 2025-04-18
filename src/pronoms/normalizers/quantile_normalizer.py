@@ -38,8 +38,8 @@ class QuantileNormalizer:
         Parameters
         ----------
         X : Union[np.ndarray, List[List[float]]]
-            Input data matrix with shape (n_proteins, n_samples).
-            Each column represents a sample, each row represents a protein.
+            Input data matrix with shape (n_samples, n_features).
+            Each row represents a sample, each column represents a feature/protein.
         
         Returns
         -------
@@ -61,33 +61,33 @@ class QuantileNormalizer:
                 "Input data contains NaN or Inf values. Please handle these values before normalization."
             )
         
-        n_proteins, n_samples = X.shape
+        n_samples, n_features = X.shape
         normalized_data = np.zeros_like(X)
         
-        # Store original indices for each column to reconstruct the data later
+        # Store original indices for each row to reconstruct the data later
         indices = np.zeros_like(X, dtype=int)
         for i in range(n_samples):
-            indices[:, i] = np.argsort(X[:, i])
+            indices[i, :] = np.argsort(X[i, :])
         
-        # Sort each column
-        sorted_data = np.sort(X, axis=0)
+        # Sort each row
+        sorted_data = np.sort(X, axis=1)
         
-        # Calculate the mean across each row of the sorted data
+        # Calculate the mean across each column of the sorted data
         # This creates a reference distribution
-        reference = np.mean(sorted_data, axis=1)
+        reference = np.mean(sorted_data, axis=0)
         self.reference_distribution = reference
         
-        # Replace values in each column with the corresponding value from the reference
+        # Replace values in each row with the corresponding value from the reference
         for i in range(n_samples):
-            # Get the sorting indices for this column
-            sort_idx = indices[:, i]
+            # Get the sorting indices for this row
+            sort_idx = indices[i, :]
             
             # Create an array to map sorted indices back to original positions
             unsort_idx = np.zeros_like(sort_idx)
-            unsort_idx[sort_idx] = np.arange(n_proteins)
+            unsort_idx[sort_idx] = np.arange(n_features)
             
             # Assign reference values to the original positions
-            normalized_data[:, i] = reference[unsort_idx]
+            normalized_data[i, :] = reference[unsort_idx]
         
         return normalized_data
     
@@ -101,9 +101,9 @@ class QuantileNormalizer:
         Parameters
         ----------
         before_data : np.ndarray
-            Data before normalization, shape (n_proteins, n_samples).
+            Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
-            Data after normalization, shape (n_proteins, n_samples).
+            Data after normalization, shape (n_samples, n_features).
         sample_names : Optional[List[str]], optional
             Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional
