@@ -240,7 +240,7 @@ class TestVSNNormalizer:
     # Create a separate test to debug R and VSN availability
     def test_debug_r_vsn_availability(self):
         """Debug why R and VSN aren't being detected."""
-        debug_file = "/home/mriffle/windsurf/pronoms/r_debug.log"
+        debug_file = "r_debug.log"
         with open(debug_file, 'w') as f:
             try:
                 # Import the necessary modules
