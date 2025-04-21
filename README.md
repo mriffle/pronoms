@@ -61,9 +61,13 @@ This follows the standard convention used in scikit-learn and other Python data 
 For normalizers that use R (VSN), ensure R is properly installed and accessible. The library uses `rpy2` to interface with R.
 
 ### Installing Required R Packages
-In R:
+The VSN package is part of Bioconductor. In R, run the following commands:
+
 ```R
-install.packages("vsn")
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("vsn")
 ```
 
 ## Development
