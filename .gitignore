@@ -71,3 +71,4 @@ ENV/
 .RData
 .Ruserdata
 r_debug.log
+.windsurfrules
