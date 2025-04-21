@@ -11,25 +11,38 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Dict, Any, List, Union
 
-# Import rpy2 with error handling
-try:
-    import rpy2
-    import rpy2.robjects as robjects
-    from rpy2.robjects import pandas2ri
-    from rpy2.robjects.packages import importr, isinstalled
-    from rpy2.rinterface_lib.callbacks import logger as rpy2_logger
-    import rpy2.rinterface_lib.embedded as embedded
+# Don't import rpy2 at module level to avoid import-time crashes
+# Instead, we'll import it only when functions are called
+
+# Flag to track if R is initialized
+_R_INITIALIZED = False
+HAS_RPY2 = None  # None means "not checked yet"
+
+
+def _import_rpy2():
+    """
+    Try to import rpy2 and return whether it's available.
+    This is called lazily only when R functionality is needed.
+    """
+    global HAS_RPY2
     
-    # Activate pandas conversion
-    pandas2ri.activate()
-    
-    # Flag to track if R is initialized
-    _R_INITIALIZED = False
-    
-    HAS_RPY2 = True
-except ImportError:
-    HAS_RPY2 = False
-    _R_INITIALIZED = False
+    if HAS_RPY2 is not None:
+        return HAS_RPY2
+        
+    try:
+        import rpy2
+        import rpy2.robjects
+        from rpy2.robjects import pandas2ri
+        
+        # Activate pandas conversion
+        pandas2ri.activate()
+        
+        HAS_RPY2 = True
+    except Exception:
+        # rpy2 or R libs not available/configured; disable R integration
+        HAS_RPY2 = False
+        
+    return HAS_RPY2
 
 
 class RInterfaceError(Exception):
@@ -53,12 +66,16 @@ def check_r_availability():
     """
     global _R_INITIALIZED
     
-    if not HAS_RPY2:
+    # Try to import rpy2 if not already imported
+    if not _import_rpy2():
         raise RInterfaceError(
-            "rpy2 is not installed. Install it with 'pip install rpy2>=3.5'"
+            "rpy2 is not installed or R is not available. Install rpy2 with 'pip install rpy2>=3.5' and ensure R is installed."
         )
     
     try:
+        # Import embedded module only when needed
+        import rpy2.rinterface_lib.embedded as embedded
+        
         # Set R options before initialization if not already initialized
         if not _R_INITIALIZED:
             try:
@@ -99,6 +116,9 @@ def check_r_package(package_name: str) -> bool:
         True if the package is installed, False otherwise.
     """
     check_r_availability()
+    
+    # Import isinstalled only when needed
+    from rpy2.robjects.packages import isinstalled
     return isinstalled(package_name)
 
 
@@ -148,15 +168,15 @@ def setup_r_environment(required_packages: List[str]) -> None:
         )
 
 
-def convert_to_r_matrix(data: np.ndarray, row_names: Optional[List[str]] = None, 
-                       col_names: Optional[List[str]] = None) -> 'robjects.Matrix':
+def convert_to_r_matrix(data: np.ndarray, row_names: Optional[List[str]] = None,
+                     col_names: Optional[List[str]] = None) -> 'robjects.Matrix':
     """
     Convert a numpy array to an R matrix.
     
     Parameters
     ----------
     data : np.ndarray
-        Data to convert.
+        Numpy array to convert.
     row_names : Optional[List[str]], optional
         Row names for the R matrix, by default None.
     col_names : Optional[List[str]], optional
@@ -168,6 +188,9 @@ def convert_to_r_matrix(data: np.ndarray, row_names: Optional[List[str]] = None,
         R matrix object.
     """
     check_r_availability()
+    
+    # Import rpy2 modules only when needed
+    import rpy2.robjects as robjects
     
     # Convert to R matrix
     r_matrix = robjects.r.matrix(
@@ -220,6 +243,9 @@ def convert_from_r_matrix(r_matrix: 'robjects.Matrix') -> np.ndarray:
     """
     check_r_availability()
     
+    # Import rpy2 modules only when needed
+    import rpy2.robjects as robjects
+    
     # Get dimensions
     nrow = robjects.r.nrow(r_matrix)[0]
     ncol = robjects.r.ncol(r_matrix)[0]
@@ -258,6 +284,9 @@ def run_r_script(script: str, data: Optional[np.ndarray] = None,
         If the R script execution fails.
     """
     check_r_availability()
+    
+    # Import rpy2 modules only when needed
+    import rpy2.robjects as robjects
     
     # Create a temporary file for the R script
     with tempfile.NamedTemporaryFile(suffix='.R', mode='w', delete=False) as f:

@@ -7,7 +7,6 @@ This module contains various normalization methods for proteomics data.
 from .median_normalizer import MedianNormalizer
 from .quantile_normalizer import QuantileNormalizer
 from .l1_normalizer import L1Normalizer
-from .vsn_normalizer import VSNNormalizer
 
 __all__ = [
     "MedianNormalizer",
@@ -15,3 +14,13 @@ __all__ = [
     "L1Normalizer",
     "VSNNormalizer",
 ]
+
+# Lazy-load VSNNormalizer to avoid rpy2 import on package import
+def __getattr__(name: str):
+    if name == "VSNNormalizer":
+        from .vsn_normalizer import VSNNormalizer
+        return VSNNormalizer
+    raise AttributeError(f"module {__name__} has no attribute {name}")
+
+def __dir__():
+    return __all__
