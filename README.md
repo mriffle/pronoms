@@ -1,15 +1,15 @@
 # Pronoms: Proteomics Normalization Python Library
 
 ## Overview
-Pronoms is a Python library implementing multiple normalization methods for quantitative proteomics data. Each normalization method is encapsulated within modular, reusable classes. The library includes visualization capabilities that allow users to easily observe the effects of normalization. Some normalization methods, such as DirectLFQ and VSN normalization, leverage R on the backend for computation.
+Pronoms is a Python library implementing multiple normalization methods for quantitative proteomics data. Each normalization method is encapsulated within modular, reusable classes. The library includes visualization capabilities that allow users to easily observe the effects of normalization. Some normalization methods, such as VSN normalization, leverage R on the backend for computation.
 
 ## Installation
 
 ### Prerequisites
 - Python 3.9 or higher
-- For R-based normalizers (DirectLFQ, VSN):
+- For R-based normalizers (VSN):
   - R installed on your system
-  - Required R packages: `vsn`, `DirectLFQ`
+  - Required R packages: `vsn`
 
 ### Installing from PyPI
 ```bash
@@ -48,7 +48,6 @@ normalizer.plot_comparison(data, normalized_data)
 - `MedianNormalizer`: Normalizes data by scaling each sample (row) by its median
 - `QuantileNormalizer`: Applies quantile normalization across samples
 - `L1Normalizer`: Normalizes data by scaling each sample (row) to have an L1 norm of 1
-- `DirectLFQNormalizer`: Implements DirectLFQ normalization (requires R)
 - `VSNNormalizer`: Implements Variance Stabilizing Normalization (requires R)
 
 ### Data Format
@@ -59,16 +58,12 @@ All normalizers expect data in the format of a 2D numpy array or pandas DataFram
 This follows the standard convention used in scikit-learn and other Python data science libraries.
 
 ## R Integration
-For normalizers that use R (DirectLFQ, VSN), ensure R is properly installed and accessible. The library uses `rpy2` to interface with R.
+For normalizers that use R (VSN), ensure R is properly installed and accessible. The library uses `rpy2` to interface with R.
 
 ### Installing Required R Packages
 In R:
 ```R
 install.packages("vsn")
-# For DirectLFQ, which may be on Bioconductor:
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install("DirectLFQ")
 ```
 
 ## Development

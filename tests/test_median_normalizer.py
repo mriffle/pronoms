@@ -22,7 +22,7 @@ class TestMedianNormalizer:
             [30, 60, 90, 120, 150]
         ])
         
-        # Create a dataset with known medians: [30, 60, 90]
+        # Calculate medians for each row: [30, 60, 90]
         # After normalization, all rows should have median 1.0
         
         # Create normalizer
@@ -44,8 +44,8 @@ class TestMedianNormalizer:
         assert_allclose(self.normalizer.scaling_factors, [30, 60, 90])
         
         # Check that the medians of normalized data are all 1.0
-        normalized_medians = np.median(normalized, axis=1)
-        assert_allclose(normalized_medians, [1.0, 1.0, 1.0], rtol=1e-10)
+        medians = np.median(normalized, axis=1)
+        assert_allclose(medians, [1.0, 1.0, 1.0], rtol=1e-10)
         
         # Check specific values
         expected = np.array([
@@ -70,8 +70,8 @@ class TestMedianNormalizer:
         assert normalized.shape == self.data.shape
         
         # Check that the medians of normalized data are all 1.0
-        normalized_medians = np.median(normalized, axis=0)
-        assert_allclose(normalized_medians, [1.0, 1.0, 1.0], rtol=1e-10)
+        medians = np.median(normalized, axis=1)
+        assert_allclose(medians, [1.0, 1.0, 1.0], rtol=1e-10)
     
     def test_normalize_with_zeros(self):
         """Test normalization with zeros in the data."""
@@ -97,30 +97,30 @@ class TestMedianNormalizer:
         ])
         assert_allclose(normalized, expected, rtol=1e-10)
     
-    def test_normalize_with_zero_median(self):
-        """Test normalization with a column having zero median."""
+    def test_normalize_with_zero_row(self):
+        """Test normalization with a row of all zeros."""
         # Create data with a row having zero median
-        data_with_zero_median = np.array([
-            [0, 0, 0, 10, 20],
+        data_with_zero_row = np.array([
+            [0, 0, 0, 0, 0],
             [20, 40, 60, 80, 100],
             [30, 60, 90, 120, 150]
         ])
         
         # Normalize data
-        normalized = self.normalizer.normalize(data_with_zero_median)
+        normalized = self.normalizer.normalize(data_with_zero_row)
         
         # Check that the scaling factors were stored
         # The first row has median 0, but should be replaced with 1.0 to avoid division by zero
         assert self.normalizer.scaling_factors is not None
-        assert_allclose(self.normalizer.scaling_factors, [0, 60, 90])
+        assert_allclose(self.normalizer.scaling_factors, [1, 60, 90])
         
         # Check specific values for rows with non-zero medians
-        assert_allclose(normalized[1, :], data_with_zero_median[1, :] / 60, rtol=1e-10)
-        assert_allclose(normalized[2, :], data_with_zero_median[2, :] / 90, rtol=1e-10)
+        assert_allclose(normalized[1, :], data_with_zero_row[1, :] / 60, rtol=1e-10)
+        assert_allclose(normalized[2, :], data_with_zero_row[2, :] / 90, rtol=1e-10)
         
         # For the row with zero median, the values should be equal to the original values
         # since we replace the zero median with 1.0
-        assert_allclose(normalized[0, :], data_with_zero_median[0, :], rtol=1e-10)
+        assert_allclose(normalized[0, :], data_with_zero_row[0, :], rtol=1e-10)
     
     def test_normalize_with_nan_values(self):
         """Test that normalization raises an error with NaN values."""

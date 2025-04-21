@@ -23,12 +23,13 @@ try:
     # Activate pandas conversion
     pandas2ri.activate()
     
-    # Suppress R warnings
-    embedded.set_initoptions(('--vanilla', '--quiet', '--no-save'))
+    # Flag to track if R is initialized
+    _R_INITIALIZED = False
     
     HAS_RPY2 = True
 except ImportError:
     HAS_RPY2 = False
+    _R_INITIALIZED = False
 
 
 class RInterfaceError(Exception):
@@ -50,14 +51,27 @@ def check_r_availability():
     RInterfaceError
         If rpy2 is not installed.
     """
+    global _R_INITIALIZED
+    
     if not HAS_RPY2:
         raise RInterfaceError(
             "rpy2 is not installed. Install it with 'pip install rpy2>=3.5'"
         )
     
     try:
-        # Try to initialize R
-        embedded.initialize()
+        # Set R options before initialization if not already initialized
+        if not _R_INITIALIZED:
+            try:
+                # Suppress R warnings
+                embedded.set_initoptions(('--vanilla', '--quiet', '--no-save'))
+            except RuntimeError:
+                # If we get here, R is already initialized
+                pass
+            
+            # Try to initialize R
+            embedded.initialize()
+            _R_INITIALIZED = True
+            
         return True
     except Exception as e:
         raise RInterfaceError(f"Failed to initialize R: {str(e)}")

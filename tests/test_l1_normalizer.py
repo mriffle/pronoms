@@ -17,15 +17,13 @@ class TestL1Normalizer:
         """Set up test fixtures."""
         # Create a simple test dataset
         self.data = np.array([
-            [10, 20, 30],
-            [20, 40, 60],
-            [30, 60, 90],
-            [40, 80, 120],
-            [50, 100, 150]
+            [10, 20, 30, 40, 50],
+            [20, 40, 60, 80, 100],
+            [30, 60, 90, 120, 150]
         ])
         
-        # Calculate L1 norms for each column: [150, 300, 450]
-        # After normalization, all columns should have L1 norm 1.0
+        # Calculate L1 norms for each row: [150, 300, 450]
+        # After normalization, all rows should have L1 norm 1.0
         
         # Create normalizer
         self.normalizer = L1Normalizer()
@@ -46,23 +44,21 @@ class TestL1Normalizer:
         assert_allclose(self.normalizer.scaling_factors, [150, 300, 450])
         
         # Check that the L1 norms of normalized data are all 1.0
-        l1_norms = np.sum(np.abs(normalized), axis=0)
+        l1_norms = np.sum(np.abs(normalized), axis=1)
         assert_allclose(l1_norms, [1.0, 1.0, 1.0], rtol=1e-10)
         
         # Check specific values
         expected = np.array([
-            [10/150, 20/300, 30/450],
-            [20/150, 40/300, 60/450],
-            [30/150, 60/300, 90/450],
-            [40/150, 80/300, 120/450],
-            [50/150, 100/300, 150/450]
+            [10/150, 20/150, 30/150, 40/150, 50/150],
+            [20/300, 40/300, 60/300, 80/300, 100/300],
+            [30/450, 60/450, 90/450, 120/450, 150/450]
         ])
         assert_allclose(normalized, expected, rtol=1e-10)
     
     def test_normalize_pandas_dataframe(self):
         """Test normalization with pandas DataFrame input."""
         # Convert data to DataFrame
-        df = pd.DataFrame(self.data, columns=['A', 'B', 'C'])
+        df = pd.DataFrame(self.data, columns=['A', 'B', 'C', 'D', 'E'])
         
         # Normalize data
         normalized = self.normalizer.normalize(df)
@@ -74,16 +70,16 @@ class TestL1Normalizer:
         assert normalized.shape == self.data.shape
         
         # Check that the L1 norms of normalized data are all 1.0
-        l1_norms = np.sum(np.abs(normalized), axis=0)
+        l1_norms = np.sum(np.abs(normalized), axis=1)
         assert_allclose(l1_norms, [1.0, 1.0, 1.0], rtol=1e-10)
     
     def test_normalize_with_zeros(self):
         """Test normalization with zeros in the data."""
         # Create data with zeros
         data_with_zeros = np.array([
-            [0, 0, 0],
-            [10, 20, 30],
-            [20, 40, 60]
+            [0, 10, 20],
+            [0, 20, 40],
+            [0, 30, 60]
         ])
         
         # Normalize data
@@ -95,38 +91,36 @@ class TestL1Normalizer:
         
         # Check specific values
         expected = np.array([
-            [0/30, 0/60, 0/90],
-            [10/30, 20/60, 30/90],
-            [20/30, 40/60, 60/90]
+            [0/30, 10/30, 20/30],
+            [0/60, 20/60, 40/60],
+            [0/90, 30/90, 60/90]
         ])
         assert_allclose(normalized, expected, rtol=1e-10)
     
-    def test_normalize_with_zero_column(self):
-        """Test normalization with a column of all zeros."""
-        # Create data with a column of all zeros
-        data_with_zero_column = np.array([
-            [0, 20, 30],
-            [0, 40, 60],
-            [0, 60, 90],
-            [0, 80, 120],
-            [0, 100, 150]
+    def test_normalize_with_zero_row(self):
+        """Test normalization with a row of all zeros."""
+        # Create data with a row of all zeros
+        data_with_zero_row = np.array([
+            [0, 0, 0, 0, 0],
+            [20, 40, 60, 80, 100],
+            [30, 60, 90, 120, 150]
         ])
         
         # Normalize data
-        normalized = self.normalizer.normalize(data_with_zero_column)
+        normalized = self.normalizer.normalize(data_with_zero_row)
         
         # Check that the scaling factors were stored
-        # The first column has L1 norm 0, but should be replaced with 1.0 to avoid division by zero
+        # The first row has L1 norm 0, but should be replaced with 1.0 to avoid division by zero
         assert self.normalizer.scaling_factors is not None
-        assert_allclose(self.normalizer.scaling_factors, [0, 300, 450])
+        assert_allclose(self.normalizer.scaling_factors, [1, 300, 450])
         
-        # Check specific values for columns with non-zero L1 norms
-        assert_allclose(normalized[:, 1], data_with_zero_column[:, 1] / 300, rtol=1e-10)
-        assert_allclose(normalized[:, 2], data_with_zero_column[:, 2] / 450, rtol=1e-10)
+        # Check specific values for rows with non-zero L1 norms
+        assert_allclose(normalized[1, :], data_with_zero_row[1, :] / 300, rtol=1e-10)
+        assert_allclose(normalized[2, :], data_with_zero_row[2, :] / 450, rtol=1e-10)
         
-        # For the column with zero L1 norm, the values should be equal to the original values
+        # For the row with zero L1 norm, the values should be equal to the original values
         # since we replace the zero L1 norm with 1.0
-        assert_allclose(normalized[:, 0], data_with_zero_column[:, 0], rtol=1e-10)
+        assert_allclose(normalized[0, :], data_with_zero_row[0, :], rtol=1e-10)
     
     def test_normalize_with_nan_values(self):
         """Test that normalization raises an error with NaN values."""
@@ -164,7 +158,7 @@ class TestL1Normalizer:
         ])
         
         # Calculate expected L1 norms (sum of absolute values)
-        l1_norms = np.sum(np.abs(data_with_negatives), axis=0)
+        l1_norms = np.sum(np.abs(data_with_negatives), axis=1)
         
         # Normalize data
         normalized = self.normalizer.normalize(data_with_negatives)
@@ -173,7 +167,7 @@ class TestL1Normalizer:
         assert_allclose(self.normalizer.scaling_factors, l1_norms, rtol=1e-10)
         
         # Check that the L1 norms of normalized data are all 1.0
-        normalized_l1_norms = np.sum(np.abs(normalized), axis=0)
+        normalized_l1_norms = np.sum(np.abs(normalized), axis=1)
         assert_allclose(normalized_l1_norms, [1.0, 1.0, 1.0], rtol=1e-10)
     
     def test_plot_comparison(self):
