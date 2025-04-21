@@ -7,7 +7,7 @@ name = "pronoms"
 version = "0.1.0"
 description = "Flexible normalization methods for proteomics quantitative data"
 readme = "README.md"
-authors = [{ name = "Your Name", email = "your.email@example.com" }]
+authors = [{ name = "Michael Riffle", email = "mriffle@uw.edu" }]
 license = { text = "MIT" }
 requires-python = ">=3.9"
 dependencies = [
@@ -26,8 +26,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/pronoms"
-Repository = "https://github.com/yourusername/pronoms"
+Homepage = "https://github.com/mriffle/pronoms"
+Repository = "https://github.com/mriffle/pronoms"
 
 [tool.setuptools.packages.find]
 where = ["src"]
