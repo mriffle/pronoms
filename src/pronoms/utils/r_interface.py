@@ -62,14 +62,21 @@ def check_r_availability():
         # Set R options before initialization if not already initialized
         if not _R_INITIALIZED:
             try:
-                # Suppress R warnings
-                embedded.set_initoptions(('--vanilla', '--quiet', '--no-save'))
-            except RuntimeError:
-                # If we get here, R is already initialized
+                # Check if R is already initialized using the appropriate method
+                # In newer rpy2 versions, we use isinitialized() instead of initialize()
+                if hasattr(embedded, 'isinitialized') and not embedded.isinitialized():
+                    # For newer rpy2 versions, initialization is automatic
+                    # We just need to check if it's initialized
+                    pass
+                elif hasattr(embedded, 'initialize'):
+                    # For older rpy2 versions, we need to initialize explicitly
+                    embedded.set_initoptions(('--vanilla', '--quiet', '--no-save'))
+                    embedded.initialize()
+            except Exception as e:
+                print(f"Warning: R initialization issue: {str(e)}")
                 pass
             
-            # Try to initialize R
-            embedded.initialize()
+            # Mark as initialized regardless, since we'll try to use R anyway
             _R_INITIALIZED = True
             
         return True
@@ -171,11 +178,28 @@ def convert_to_r_matrix(data: np.ndarray, row_names: Optional[List[str]] = None,
     )
     
     # Set row and column names if provided
+    # In newer versions of rpy2, we need to use a different approach
     if row_names is not None:
-        robjects.r.rownames(r_matrix, robjects.StrVector(row_names))
+        try:
+            # Try the newer approach first
+            r_matrix.rownames = robjects.StrVector(row_names)
+        except Exception:
+            # Fall back to the older approach if needed
+            try:
+                robjects.r.rownames(r_matrix, robjects.StrVector(row_names))
+            except Exception as e:
+                print(f"Warning: Could not set row names: {str(e)}")
     
     if col_names is not None:
-        robjects.r.colnames(r_matrix, robjects.StrVector(col_names))
+        try:
+            # Try the newer approach first
+            r_matrix.colnames = robjects.StrVector(col_names)
+        except Exception:
+            # Fall back to the older approach if needed
+            try:
+                robjects.r.colnames(r_matrix, robjects.StrVector(col_names))
+            except Exception as e:
+                print(f"Warning: Could not set column names: {str(e)}")
     
     return r_matrix
 

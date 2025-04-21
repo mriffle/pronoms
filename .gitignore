@@ -70,3 +70,4 @@ ENV/
 .Rhistory
 .RData
 .Ruserdata
+r_debug.log

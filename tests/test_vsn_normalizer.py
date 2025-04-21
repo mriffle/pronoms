@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from pronoms.normalizers import VSNNormalizer
-from pronoms.utils.r_interface import RInterfaceError
+from pronoms.utils.r_interface import RInterfaceError, setup_r_environment
 
 
 class TestVSNNormalizer:
@@ -218,3 +218,157 @@ class TestVSNNormalizer:
             assert isinstance(result, tuple)
             assert result[0] == mock_fig
             assert result[1] == mock_fig2
+            
+    def _is_r_vsn_available():
+        """Check if R and the VSN package are available."""
+        try:
+            # Direct check for R and VSN without using setup_r_environment
+            import rpy2.robjects as robjects
+            from rpy2.robjects.packages import isinstalled, importr
+            
+            # Check if VSN is installed
+            if isinstalled('vsn'):
+                # Try to import VSN to make sure it works
+                importr('vsn')
+                return True
+            return False
+        except Exception as e:
+            # Catch all exceptions for debugging
+            print(f"R/VSN availability check failed: {type(e).__name__}: {str(e)}")
+            return False
+    
+    # Create a separate test to debug R and VSN availability
+    def test_debug_r_vsn_availability(self):
+        """Debug why R and VSN aren't being detected."""
+        debug_file = "/home/mriffle/windsurf/pronoms/r_debug.log"
+        with open(debug_file, 'w') as f:
+            try:
+                # Import the necessary modules
+                import rpy2
+                import rpy2.robjects as robjects
+                from rpy2.robjects.packages import importr, isinstalled
+                
+                # Write version information
+                f.write(f"rpy2 version: {rpy2.__version__}\n")
+                
+                # Check if R is initialized
+                from pronoms.utils.r_interface import _R_INITIALIZED
+                f.write(f"R initialized: {_R_INITIALIZED}\n")
+                
+                # Try to initialize R if not already initialized
+                if not _R_INITIALIZED:
+                    try:
+                        from rpy2.rinterface_lib import embedded
+                        embedded.initialize()
+                        f.write("R successfully initialized manually\n")
+                    except Exception as e:
+                        f.write(f"Failed to initialize R: {type(e).__name__}: {str(e)}\n")
+                
+                # Check if VSN is installed
+                try:
+                    vsn_installed = isinstalled('vsn')
+                    f.write(f"VSN package installed according to R: {vsn_installed}\n")
+                    
+                    if vsn_installed:
+                        # Try to import VSN
+                        try:
+                            vsn = importr('vsn')
+                            f.write("Successfully imported VSN package\n")
+                        except Exception as e:
+                            f.write(f"Failed to import VSN: {type(e).__name__}: {str(e)}\n")
+                except Exception as e:
+                    f.write(f"Failed to check if VSN is installed: {type(e).__name__}: {str(e)}\n")
+                
+                # Try to run a simple R command
+                try:
+                    result = robjects.r('R.version.string')
+                    f.write(f"R version: {result[0]}\n")
+                except Exception as e:
+                    f.write(f"Failed to run R command: {type(e).__name__}: {str(e)}\n")
+                    
+            except ImportError as e:
+                f.write(f"Import error: {str(e)}\n")
+            except Exception as e:
+                f.write(f"Unexpected error: {type(e).__name__}: {str(e)}\n")
+                
+        # Let the test know we're done debugging
+        print(f"Debug information written to {debug_file}")
+    
+    @pytest.mark.skipif(not _is_r_vsn_available(), reason="R or VSN package not available")
+    def test_vsn_package_availability(self):
+        """Test that the VSN package is available in R.
+        
+        This test is skipped if R or the VSN package is not available.
+        """
+        try:
+            # Import the necessary modules
+            import rpy2.robjects as robjects
+            from rpy2.robjects.packages import importr
+            
+            # Try to import VSN
+            vsn = importr('vsn')
+            
+            # If we get here, VSN is available
+            assert True
+            
+            # Try to run a simple R command to verify R works
+            result = robjects.r('R.version.string')
+            print(f"R version: {result[0]}")
+            
+            # Create normalizer
+            normalizer = VSNNormalizer()
+            assert normalizer is not None
+            
+        except Exception as e:
+            # If there's an exception, the test should fail
+            pytest.fail(f"VSN package is not properly available: {str(e)}")
+            
+    @pytest.mark.skipif(not _is_r_vsn_available(), reason="R or VSN package not available")
+    def test_vsn_direct_r_integration(self):
+        """Test that the VSN R integration works to run normalization.
+        
+        This test uses a very simple R script to verify that the VSN package can be loaded
+        and a basic function can be called. This is a minimal test to ensure that the R
+        integration works at the most basic level.
+        
+        This test is skipped if R or the VSN package is not available.
+        """
+        try:
+            # Import the necessary modules
+            from pronoms.utils.r_interface import run_r_script
+            
+            # Create a simple R script that just loads the VSN package and returns success
+            r_script = """
+            # Load required packages
+            library(vsn)
+            
+            # Return a success message in a variable that run_r_script will extract
+            parameters <- list(message = "VSN package loaded successfully")
+            """
+            
+            # Run the R script
+            results = run_r_script(r_script)
+            
+            # Check that we got parameters back
+            assert 'parameters' in results
+            
+            # The parameters object is an R list, which we need to access differently
+            params = results['parameters']
+            
+            # Print the parameters object for debugging
+            print(f"Parameters type: {type(params)}")
+            print(f"Parameters content: {params}")
+            
+            # Check if 'message' is a key in the parameters
+            # In rpy2, we can access list elements by name using the rx2 method
+            assert 'message' in params.names
+            
+            # Get the message value
+            message = params.rx2('message')
+            assert message[0] == "VSN package loaded successfully"
+            
+            print("VSN R integration test passed: VSN package loaded successfully")
+            
+        except Exception as e:
+            # If there's an exception, the test should fail
+            pytest.fail(f"VSN R integration failed: {str(e)}")

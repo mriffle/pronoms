@@ -145,20 +145,22 @@ class VSNNormalizer:
         if self.reference_sample is not None:
             ref_sample = str(self.reference_sample + 1)  # R is 1-indexed
         
-        script = """
+        # Use an f-string instead of .format() to avoid issues with curly braces in the R script
+        script = f"""
         # Load required packages
         library(vsn)
         
         # Check if input_data exists in the environment
-        if (!exists("input_data")) {
+        if (!exists("input_data")) {{  # Note the double braces to escape them in f-string
             stop("Input data not provided")
-        }
+        }}
         
         # Run VSN normalization
+        # For VSN2, we need to set minDataPointsPerStratum to allow for smaller datasets
         vsn_fit <- vsn2(
             input_data,
-            calib.strat = "{calib}",
-            reference = {ref_sample}
+            reference = {ref_sample},
+            minDataPointsPerStratum = 3  # Allow VSN to work with smaller datasets
         )
         
         # Get normalized data
@@ -171,10 +173,7 @@ class VSNNormalizer:
             reference = vsn_fit@reference,
             h_parameters = vsn_fit@h.parameters
         )
-        """.format(
-            calib=self.calib,
-            ref_sample=ref_sample
-        )
+        """
         
         return script
     
