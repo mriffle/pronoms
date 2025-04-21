@@ -7,7 +7,7 @@ which is implemented using the vsn R package.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Union, Tuple, Dict, Any
+from typing import Optional, List, Tuple, Dict, Any
 
 from ..utils.validators import validate_input_data, check_nan_inf
 from ..utils.plotting import create_comparison_plot
@@ -57,7 +57,7 @@ class VSNNormalizer:
             print(f"Warning: {str(e)}")
             print("VSN normalization will not be available.")
     
-    def normalize(self, X: Union[np.ndarray, List[List[float]]],
+    def normalize(self, X: np.ndarray,
                  protein_ids: Optional[List[str]] = None,
                  sample_ids: Optional[List[str]] = None) -> np.ndarray:
         """
@@ -65,7 +65,7 @@ class VSNNormalizer:
         
         Parameters
         ----------
-        X : Union[np.ndarray, List[List[float]]]
+        X : np.ndarray
             Input data matrix with shape (n_samples, n_features).
             Each row represents a sample, each column represents a feature/protein.
         protein_ids : Optional[List[str]], optional

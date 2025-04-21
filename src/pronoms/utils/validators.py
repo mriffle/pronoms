@@ -5,18 +5,17 @@ This module provides functions for validating input data for normalization.
 """
 
 import numpy as np
-import pandas as pd
-from typing import Union, Tuple
+from typing import Tuple
 
 
-def validate_input_data(data: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
+def validate_input_data(data: np.ndarray) -> np.ndarray:
     """
     Validate input data for normalization.
     
     Parameters
     ----------
-    data : Union[np.ndarray, pd.DataFrame]
-        Input data for normalization. If DataFrame, it will be converted to numpy array.
+    data : np.ndarray
+        Input data for normalization. Must be a 2D numpy array.
         
     Returns
     -------
@@ -26,20 +25,18 @@ def validate_input_data(data: Union[np.ndarray, pd.DataFrame]) -> np.ndarray:
     Raises
     ------
     TypeError
-        If data is not a numpy array or pandas DataFrame.
+        If data is not a numpy array.
     ValueError
         If data is empty or has incorrect dimensions.
     """
-    if isinstance(data, pd.DataFrame):
-        data = data.values
-    elif not isinstance(data, np.ndarray):
+    if not isinstance(data, np.ndarray):
         raise TypeError(
-            f"Input data must be a numpy array or pandas DataFrame, got {type(data)}"
+            f"Input data must be a numpy array, got {type(data)}"
         )
     
     if data.ndim != 2:
         raise ValueError(
-            f"Input data must be a 2D array with shape (n_proteins, n_samples), got shape {data.shape}"
+            f"Input data must be a 2D array with shape (n_samples, n_features), got shape {data.shape}"
         )
     
     if data.size == 0:

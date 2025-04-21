@@ -6,7 +6,7 @@ This module provides a class for L1 normalization of proteomics data.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Tuple
 
 from ..utils.validators import validate_input_data, check_nan_inf
 from ..utils.plotting import create_comparison_plot
@@ -30,13 +30,13 @@ class L1Normalizer:
         """Initialize the L1Normalizer."""
         self.scaling_factors = None
     
-    def normalize(self, X: Union[np.ndarray, List[List[float]]]) -> np.ndarray:
+    def normalize(self, X: np.ndarray) -> np.ndarray:
         """
         Perform L1 normalization on input data X.
         
         Parameters
         ----------
-        X : Union[np.ndarray, List[List[float]]]
+        X : np.ndarray
             Input data matrix with shape (n_samples, n_features).
             Each row represents a sample, each column represents a feature/protein.
         

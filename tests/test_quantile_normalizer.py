@@ -3,7 +3,6 @@ Tests for the QuantileNormalizer class.
 """
 
 import numpy as np
-import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
@@ -50,23 +49,7 @@ class TestQuantileNormalizer:
             normalized_order = np.argsort(np.argsort(normalized[i, :]))
             assert_allclose(original_order, normalized_order, rtol=1e-10)
     
-    def test_normalize_pandas_dataframe(self):
-        """Test normalization with pandas DataFrame input."""
-        # Convert data to DataFrame
-        df = pd.DataFrame(self.data, columns=['A', 'B', 'C', 'D', 'E'])
-        
-        # Normalize data
-        normalized = self.normalizer.normalize(df)
-        
-        # Check that the result is a numpy array
-        assert isinstance(normalized, np.ndarray)
-        
-        # Check that the shape is preserved
-        assert normalized.shape == self.data.shape
-        
-        # Check that all rows have the same sorted values
-        for i in range(self.data.shape[0]):
-            assert_allclose(np.sort(normalized[i, :]), self.normalizer.reference_distribution, rtol=1e-10)
+    # test_normalize_pandas_dataframe removed as we now only support numpy arrays
     
     def test_normalize_with_zeros(self):
         """Test normalization with zeros in the data."""

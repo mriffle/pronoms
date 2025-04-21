@@ -6,7 +6,7 @@ This module provides a class for median normalization of proteomics data.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Tuple
 
 from ..utils.validators import validate_input_data, check_nan_inf
 from ..utils.plotting import create_comparison_plot
@@ -31,13 +31,13 @@ class MedianNormalizer:
         """Initialize the MedianNormalizer."""
         self.scaling_factors = None
     
-    def normalize(self, X: Union[np.ndarray, List[List[float]]]) -> np.ndarray:
+    def normalize(self, X: np.ndarray) -> np.ndarray:
         """
         Perform median normalization on input data X.
         
         Parameters
         ----------
-        X : Union[np.ndarray, List[List[float]]]
+        X : np.ndarray
             Input data matrix with shape (n_samples, n_features).
             Each row represents a sample, each column represents a feature/protein.
         
@@ -61,8 +61,23 @@ class MedianNormalizer:
                 "Input data contains NaN or Inf values. Please handle these values before normalization."
             )
         
-        # Calculate median for each sample (row)
-        medians = np.median(X, axis=1, keepdims=True)
+        # Calculate median for each sample (row) using faster partition method
+        # This is O(n) instead of O(n log n) for large arrays
+        n_features = X.shape[1]
+        k = n_features // 2
+        
+        # Use np.partition which is much faster than sorting for finding medians
+        if n_features % 2 == 1:  # Odd number of elements
+            # For odd number of elements, median is the middle element
+            medians = np.partition(X, k, axis=1)[:, k]
+        else:  # Even number of elements
+            # For even number of elements, median is the average of the two middle elements
+            medians_high = np.partition(X, k, axis=1)[:, k]
+            medians_low = np.partition(X, k-1, axis=1)[:, k-1]
+            medians = (medians_high + medians_low) / 2
+        
+        # Add keepdims for broadcasting
+        medians = medians.reshape(-1, 1)
         
         # Avoid division by zero
         medians = np.where(medians == 0, 1.0, medians)
@@ -72,7 +87,6 @@ class MedianNormalizer:
         
         # Normalize each sample by its median
         normalized_data = X / medians
-        
         return normalized_data
     
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
