@@ -191,6 +191,7 @@ def convert_to_r_matrix(data: np.ndarray, row_names: Optional[List[str]] = None,
     
     # Import rpy2 modules only when needed
     import rpy2.robjects as robjects
+    from rpy2.robjects.vectors import StrVector
     
     # Convert to R matrix
     r_matrix = robjects.r.matrix(
@@ -201,28 +202,23 @@ def convert_to_r_matrix(data: np.ndarray, row_names: Optional[List[str]] = None,
     )
     
     # Set row and column names if provided
-    # In newer versions of rpy2, we need to use a different approach
     if row_names is not None:
         try:
-            # Try the newer approach first
-            r_matrix.rownames = robjects.StrVector(row_names)
+            r_matrix.rownames = StrVector(row_names)
         except Exception:
-            # Fall back to the older approach if needed
             try:
-                robjects.r.rownames(r_matrix, robjects.StrVector(row_names))
+                robjects.r['rownames<-'](r_matrix, StrVector(row_names))
             except Exception as e:
-                print(f"Warning: Could not set row names: {str(e)}")
+                print(f"Warning: Could not set row names: {e}")
     
     if col_names is not None:
         try:
-            # Try the newer approach first
-            r_matrix.colnames = robjects.StrVector(col_names)
+            r_matrix.colnames = StrVector(col_names)
         except Exception:
-            # Fall back to the older approach if needed
             try:
-                robjects.r.colnames(r_matrix, robjects.StrVector(col_names))
+                robjects.r['colnames<-'](r_matrix, StrVector(col_names))
             except Exception as e:
-                print(f"Warning: Could not set column names: {str(e)}")
+                print(f"Warning: Could not set column names: {e}")
     
     return r_matrix
 
