@@ -287,6 +287,7 @@ def run_r_script(script: str, data: Optional[np.ndarray] = None,
     
     # Import rpy2 modules only when needed
     import rpy2.robjects as robjects
+    from rpy2.robjects.vectors import StrVector
     
     # Create a temporary file for the R script
     with tempfile.NamedTemporaryFile(suffix='.R', mode='w', delete=False) as f:

@@ -124,8 +124,15 @@ class VSNNormalizer:
             
             # Store VSN parameters
             if 'parameters' in results:
-                self.vsn_params = results['parameters']
-            
+                # Convert the R list-like object to a Python dict for easier access
+                r_params = results['parameters']
+                self.vsn_params = {}
+                # Access elements using string keys after conversion
+                # Note: Accessing R list elements might require checking names
+                param_names = list(r_params.names)
+                if 'coefficients' in param_names:
+                     self.vsn_params['coefficients'] = np.array(r_params.rx2('coefficients'))
+        
             return normalized_data
             
         except Exception as e:
@@ -133,49 +140,58 @@ class VSNNormalizer:
     
     def _create_vsn_script(self) -> str:
         """
-        Create R script for VSN normalization.
-        
+        Create R script for VSN normalization using ExpressionSet.
+
         Returns
         -------
         str
             R script for VSN normalization.
         """
-        # Set reference sample parameter
-        ref_sample = "NULL"
-        if self.reference_sample is not None:
-            ref_sample = str(self.reference_sample + 1)  # R is 1-indexed
-        
-        # Use an f-string instead of .format() to avoid issues with curly braces in the R script
-        script = f"""
+        # Base R script parts
+        script_start = """
         # Load required packages
         library(vsn)
-        
-        # Check if input_data exists in the environment
-        if (!exists("input_data")) {{  # Note the double braces to escape them in f-string
-            stop("Input data not provided")
-        }}
-        
-        # Run VSN normalization
-        # For VSN2, we need to set minDataPointsPerStratum to allow for smaller datasets
-        vsn_fit <- vsn2(
-            input_data,
-            reference = {ref_sample},
-            minDataPointsPerStratum = 3  # Allow VSN to work with smaller datasets
-        )
-        
-        # Get normalized data
-        normalized_data <- predict(vsn_fit, input_data)
-        
-        # Extract parameters
-        parameters <- list(
-            coefficients = vsn_fit@coefficients,
-            stdev = vsn_fit@stdev,
-            reference = vsn_fit@reference,
-            h_parameters = vsn_fit@h.parameters
-        )
+        library(Biobase)
+
+        # Check if input_data exists
+        if (!exists("input_data")) {
+            stop("Input data matrix not provided")
+        }
+
+        # Create ExpressionSet (should inherit names from input_data)
+        eset <- tryCatch({
+            ExpressionSet(assayData = input_data)
+        }, error = function(e) {
+            stop(paste("Error creating ExpressionSet:", e$message))
+        })
         """
         
-        return script
+        # Conditionally add reference parameter to vsn2 call
+        vsn2_call_base = "vsn2(eset, minDataPointsPerStratum = 3"
+        if self.reference_sample is not None:
+            ref_index = self.reference_sample + 1 # R is 1-indexed
+            vsn2_call = f"{vsn2_call_base}, reference = {ref_index})"
+        else:
+            vsn2_call = f"{vsn2_call_base})" # No reference argument
+            
+        script_end = f"""
+        # Run VSN normalization on the ExpressionSet
+        vsn_fit <- tryCatch({{
+            {vsn2_call}
+        }}, error = function(e) {{
+            stop(paste("Error during vsn2 execution:", e$message))
+        }})
+
+        # Get normalized data
+        normalized_data <- exprs(vsn_fit)
+
+        # Extract parameters (Note: @stdev removed as it's not a standard slot for vsn object here)
+        parameters <- list(
+            coefficients = vsn_fit@coefficients
+        )
+        """
+
+        return script_start + script_end
     
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
                        figsize: Tuple[int, int] = (10, 8),
