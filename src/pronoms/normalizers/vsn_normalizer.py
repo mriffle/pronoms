@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from typing import Optional, List, Tuple, Dict, Any
 
 from ..utils.validators import validate_input_data, check_nan_inf
-from ..utils.plotting import create_hexbin_comparison
+from ..utils.plotting import plot_comparison_hexbin
 from ..utils.r_interface import setup_r_environment, run_r_script
 
 
@@ -194,59 +194,37 @@ class VSNNormalizer:
         return script_start + script_end
     
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
-                       figsize: Tuple[int, int] = (10, 8),
-                       title: str = "VSN Normalization Comparison") -> plt.Figure:
+                       figsize: Tuple[int, int] = (8, 8),
+                       gridsize: int = 50,
+                       cmap: str = 'viridis') -> plt.Figure:
         """
-        Plot data before vs after normalization using a 2D hexbin density plot.
-        
+        Plot comparison using hexbin plot.
+        For VSN, this plots log2(Original + 1) vs Normalized (glog2).
+
         Parameters
         ----------
         before_data : np.ndarray
-            Data before normalization, shape (n_samples, n_features).
+            Data before normalization.
         after_data : np.ndarray
-            Data after normalization, shape (n_samples, n_features).
+            Data after normalization (normalized using this instance).
         figsize : Tuple[int, int], optional
-            Figure size, by default (10, 8).
-        title : str, optional
-            Plot title, by default "VSN Normalization Comparison".
-        
+            Figure size, by default (8, 8).
+        gridsize : int, optional
+            Number of hexagons in the x-direction, by default 50.
+        cmap : str, optional
+            Colormap for the hexbins, by default 'viridis'.
+
         Returns
         -------
         plt.Figure
-            Figure object containing the hexbin density plot.
+            Matplotlib figure object.
         """
-        # Validate input data
-        before_data = validate_input_data(before_data)
-        after_data = validate_input_data(after_data)
-        
-        # Create hexbin comparison plot
-        fig = create_hexbin_comparison(
-            before_data,
-            after_data,
+        return plot_comparison_hexbin(
+            before_data=before_data, 
+            after_data=after_data, 
+            title="VSN Normalization Comparison (glog2 vs log2)",
             figsize=figsize,
-            title=title,
-            xlabel="Before VSN Normalization",
-            ylabel="After VSN Normalization"
+            gridsize=gridsize,
+            cmap=cmap,
+            transform_original='log2'
         )
-        
-        # If VSN parameters are available, add them to the plot
-        if self.vsn_params is not None:
-            # Create a string with the VSN parameters
-            param_text = "VSN Parameters:\n"
-            
-            # Add only the most important parameters to avoid cluttering
-            if 'stdev' in self.vsn_params:
-                stdev = self.vsn_params['stdev']
-                param_text += f"Stdev: {stdev:.3f}\n"
-            
-            if 'reference' in self.vsn_params:
-                ref = self.vsn_params['reference']
-                param_text += f"Reference: {ref}\n"
-            
-            # Add text box with VSN parameters
-            plt.figtext(
-                0.01, 0.01, param_text, fontsize=9,
-                bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8)
-            )
-        
-        return fig

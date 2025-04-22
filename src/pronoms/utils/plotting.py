@@ -19,6 +19,7 @@ def create_hexbin_comparison(
     gridsize: int = 50,
     cmap: str = "viridis",
     add_identity_line: bool = True,
+    transform_original: Optional[str] = None
 ) -> plt.Figure:
     """
     Create a 2D hexbin density plot comparing values before and after normalization.
@@ -43,6 +44,10 @@ def create_hexbin_comparison(
         Colormap to use, by default "viridis".
     add_identity_line : bool, optional
         Whether to add an identity line (y=x), by default True.
+    transform_original : Optional[str], optional
+        Apply a transformation to the 'before_data' before plotting.
+        String indicating transformation type (e.g., 'log2'). Currently only 'log2' is supported.
+        If 'log2', np.log2(before_data + 1) is plotted on the x-axis.
         
     Returns
     -------
@@ -61,7 +66,26 @@ def create_hexbin_comparison(
     # Flatten the data for plotting
     x = before_data.flatten()
     y = after_data.flatten()
-    
+
+    # Apply transformation to 'before' data if specified
+    x_label = xlabel
+    if transform_original == 'log2':
+        # Add 1 before log2 to handle zeros, filter out resulting NaNs/Infs if any
+        # Use np.errstate to suppress warnings about invalid values (handled by filtering)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            x_transformed = np.log2(x + 1)
+        
+        # Filter out non-finite values that might arise from log2(-ve+1) or original NaNs/Infs
+        valid_indices = np.isfinite(x_transformed) & np.isfinite(y)
+        x = x_transformed[valid_indices]
+        y = y[valid_indices]
+        x_label = 'Log2(Original Value + 1)'
+    else:
+        # If no transformation, just filter out non-finite values from both
+        valid_indices = np.isfinite(x) & np.isfinite(y)
+        x = x[valid_indices]
+        y = y[valid_indices]
+
     # Create hexbin plot
     hb = ax.hexbin(x, y, gridsize=gridsize, cmap=cmap, mincnt=1, bins='log')
     
@@ -77,7 +101,7 @@ def create_hexbin_comparison(
         ax.plot(lims, lims, 'r--', alpha=0.7, zorder=0)
     
     # Set labels and title
-    ax.set_xlabel(xlabel)
+    ax.set_xlabel(x_label)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     
@@ -88,3 +112,6 @@ def create_hexbin_comparison(
     plt.tight_layout()
     
     return fig
+
+# Alias for backward compatibility and VSNNormalizer usage
+plot_comparison_hexbin = create_hexbin_comparison
