@@ -167,7 +167,7 @@ class VSNNormalizer:
         """
         
         # Conditionally add reference parameter to vsn2 call
-        vsn2_call_base = "vsn2(eset, minDataPointsPerStratum = 3"
+        vsn2_call_base = "vsn2(eset, minDataPointsPerStratum = 3, lts.quantile = 0.75"
         if self.reference_sample is not None:
             ref_index = self.reference_sample + 1 # R is 1-indexed
             vsn2_call = f"{vsn2_call_base}, reference = {ref_index})"
