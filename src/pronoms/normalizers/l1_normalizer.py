@@ -24,11 +24,15 @@ class L1Normalizer:
     scaling_factors : Optional[np.ndarray]
         Scaling factors used for normalization (L1 norm of each sample).
         Only available after calling normalize().
+    mean_of_scaling_factors : Optional[float]
+        Mean of scaling factors used to preserve original scale.
+        Only available after calling normalize().
     """
     
     def __init__(self):
         """Initialize the L1Normalizer."""
         self.scaling_factors = None
+        self.mean_of_scaling_factors = None
     
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """
@@ -68,9 +72,11 @@ class L1Normalizer:
         
         # Store scaling factors
         self.scaling_factors = l1_norms.flatten()
+        # Calculate mean of scaling factors to preserve original scale
+        self.mean_of_scaling_factors = np.mean(self.scaling_factors)
         
-        # Normalize each sample by its L1 norm
-        normalized_data = X / l1_norms
+        # Normalize each sample by its L1 norm and multiply by mean of scaling factors
+        normalized_data = (X / l1_norms) * self.mean_of_scaling_factors
         
         return normalized_data
     
@@ -109,22 +115,5 @@ class L1Normalizer:
             xlabel="Before L1 Normalization",
             ylabel="After L1 Normalization"
         )
-        
-        # If scaling factors are available, add them to the plot
-        if self.scaling_factors is not None:
-            factor_text = "L1 Scaling Factors:\n"
-            # Only show up to 10 scaling factors to avoid cluttering
-            max_factors = min(10, len(self.scaling_factors))
-            for i in range(max_factors):
-                factor_text += f"Sample {i}: {self.scaling_factors[i]:.3f}\n"
-            
-            if len(self.scaling_factors) > max_factors:
-                factor_text += f"... and {len(self.scaling_factors) - max_factors} more"
-            
-            # Add text box with scaling factors
-            plt.figtext(
-                0.01, 0.01, factor_text, fontsize=9,
-                bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8)
-            )
         
         return fig
