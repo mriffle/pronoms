@@ -77,22 +77,22 @@ class MedianNormalizer:
             medians_low = np.partition(X, k-1, axis=1)[:, k-1]
             medians = (medians_high + medians_low) / 2
         
+        # Replace zero medians with 1.0 to avoid division by zero
+        medians_safe = np.where(medians == 0, 1.0, medians)
+        
         # Calculate mean of medians to preserve original scale
-        mean_of_medians = np.mean(medians)
+        mean_of_medians = np.mean(medians_safe)
         
         # Add keepdims for broadcasting
-        medians = medians.reshape(-1, 1)
-        
-        # Avoid division by zero
-        medians = np.where(medians == 0, 1.0, medians)
+        medians_safe = medians_safe.reshape(-1, 1)
         
         # Store scaling factors
-        self.scaling_factors = medians.flatten()
+        self.scaling_factors = medians_safe.flatten()
         self.mean_of_medians = mean_of_medians  # Store for reference
         
         # Normalize each sample by its median and multiply by mean of medians
         # to preserve the original scale of the data
-        normalized_data = (X / medians) * mean_of_medians
+        normalized_data = (X / medians_safe) * mean_of_medians
         
         return normalized_data
     

@@ -42,19 +42,14 @@ class TestL1Normalizer:
         assert self.normalizer.scaling_factors is not None
         assert_allclose(self.normalizer.scaling_factors, [150, 300, 450])
         
-        # Check that the L1 norms of normalized data are all 1.0
-        l1_norms = np.sum(np.abs(normalized), axis=1)
-        assert_allclose(l1_norms, [1.0, 1.0, 1.0], rtol=1e-10)
-        
-        # Check specific values
-        expected = np.array([
-            [10/150, 20/150, 30/150, 40/150, 50/150],
-            [20/300, 40/300, 60/300, 80/300, 100/300],
-            [30/450, 60/450, 90/450, 120/450, 150/450]
-        ])
-        assert_allclose(normalized, expected, rtol=1e-10)
-    
-    # test_normalize_pandas_dataframe removed as we now only support numpy arrays
+        # Calculate the expected rescaled data
+        l1_norms = np.sum(np.abs(self.data), axis=1, keepdims=True)
+        normalized_before_rescaling = self.data / l1_norms
+        mean_l1_norm = np.mean([150, 300, 450]) # 300
+        expected_normalized = normalized_before_rescaling * mean_l1_norm
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
     
     def test_normalize_with_zeros(self):
         """Test normalization with zeros in the data."""
@@ -72,13 +67,14 @@ class TestL1Normalizer:
         assert self.normalizer.scaling_factors is not None
         assert_allclose(self.normalizer.scaling_factors, [30, 60, 90])
         
-        # Check specific values
-        expected = np.array([
-            [0/30, 10/30, 20/30],
-            [0/60, 20/60, 40/60],
-            [0/90, 30/90, 60/90]
-        ])
-        assert_allclose(normalized, expected, rtol=1e-10)
+        # Calculate the expected rescaled data
+        l1_norms = np.sum(np.abs(data_with_zeros), axis=1, keepdims=True)
+        normalized_before_rescaling = data_with_zeros / l1_norms
+        mean_l1_norm = np.mean([30, 60, 90]) # 60
+        expected_normalized = normalized_before_rescaling * mean_l1_norm
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
     
     def test_normalize_with_zero_row(self):
         """Test normalization with a row of all zeros."""
@@ -97,13 +93,21 @@ class TestL1Normalizer:
         assert self.normalizer.scaling_factors is not None
         assert_allclose(self.normalizer.scaling_factors, [1, 300, 450])
         
-        # Check specific values for rows with non-zero L1 norms
-        assert_allclose(normalized[1, :], data_with_zero_row[1, :] / 300, rtol=1e-10)
-        assert_allclose(normalized[2, :], data_with_zero_row[2, :] / 450, rtol=1e-10)
+        # Calculate the expected rescaled data
+        l1_norms = np.sum(np.abs(data_with_zero_row), axis=1, keepdims=True)
+        # Manually handle division by zero for the first row
+        l1_norms_safe = np.where(l1_norms == 0, 1, l1_norms)
+        normalized_before_rescaling = data_with_zero_row / l1_norms_safe
+        mean_l1_norm = np.mean([1, 300, 450]) # 583/3
+        expected_normalized = normalized_before_rescaling * mean_l1_norm
+        # The zero row should remain zero after normalization and rescaling
+        expected_normalized[0, :] = 0.0
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
         
-        # For the row with zero L1 norm, the values should be equal to the original values
-        # since we replace the zero L1 norm with 1.0
-        assert_allclose(normalized[0, :], data_with_zero_row[0, :], rtol=1e-10)
+        # Check that the first row (originally all zeros) remains all zeros
+        assert_allclose(normalized[0, :], [0.0, 0.0, 0.0, 0.0, 0.0], atol=1e-10)
     
     def test_normalize_with_nan_values(self):
         """Test that normalization raises an error with NaN values."""
@@ -149,9 +153,13 @@ class TestL1Normalizer:
         # Check that the scaling factors were stored correctly
         assert_allclose(self.normalizer.scaling_factors, l1_norms, rtol=1e-10)
         
-        # Check that the L1 norms of normalized data are all 1.0
-        normalized_l1_norms = np.sum(np.abs(normalized), axis=1)
-        assert_allclose(normalized_l1_norms, [1.0, 1.0, 1.0], rtol=1e-10)
+        # Calculate the expected rescaled data
+        normalized_before_rescaling = data_with_negatives / l1_norms[:, np.newaxis]
+        mean_l1_norm = np.mean(l1_norms) # 60
+        expected_normalized = normalized_before_rescaling * mean_l1_norm
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
     
     def test_plot_comparison(self):
         """Test that plot_comparison returns a figure."""

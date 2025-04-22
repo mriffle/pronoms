@@ -42,9 +42,14 @@ class TestMedianNormalizer:
         assert self.normalizer.scaling_factors is not None
         assert_allclose(self.normalizer.scaling_factors, [30, 60, 90])
         
-        # Check that the medians of normalized data are all 1.0
-        medians = np.median(normalized, axis=1)
-        assert_allclose(medians, [1.0, 1.0, 1.0], rtol=1e-10)
+        # Calculate the expected rescaled data
+        medians = np.median(self.data, axis=1, keepdims=True)
+        normalized_before_rescaling = self.data / medians
+        mean_median = np.mean([30, 60, 90]) # 60
+        expected_normalized = normalized_before_rescaling * mean_median
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
         
         # Check specific values
         expected = np.array([
@@ -52,6 +57,7 @@ class TestMedianNormalizer:
             [20/60, 40/60, 60/60, 80/60, 100/60],
             [30/90, 60/90, 90/90, 120/90, 150/90]
         ])
+        expected = expected * mean_median
         assert_allclose(normalized, expected, rtol=1e-10)
     
     # test_normalize_pandas_dataframe removed as we now only support numpy arrays
@@ -72,12 +78,22 @@ class TestMedianNormalizer:
         assert self.normalizer.scaling_factors is not None
         assert_allclose(self.normalizer.scaling_factors, [10, 20, 30])
         
+        # Calculate the expected rescaled data
+        medians = np.median(data_with_zeros, axis=1, keepdims=True)
+        normalized_before_rescaling = data_with_zeros / medians
+        mean_median = np.mean([10, 20, 30]) # 20
+        expected_normalized = normalized_before_rescaling * mean_median
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
+        
         # Check specific values
         expected = np.array([
             [0/10, 10/10, 20/10],
             [0/20, 20/20, 40/20],
             [0/30, 30/30, 60/30]
         ])
+        expected = expected * mean_median
         assert_allclose(normalized, expected, rtol=1e-10)
     
     def test_normalize_with_zero_row(self):
@@ -97,13 +113,54 @@ class TestMedianNormalizer:
         assert self.normalizer.scaling_factors is not None
         assert_allclose(self.normalizer.scaling_factors, [1, 60, 90])
         
-        # Check specific values for rows with non-zero medians
-        assert_allclose(normalized[1, :], data_with_zero_row[1, :] / 60, rtol=1e-10)
-        assert_allclose(normalized[2, :], data_with_zero_row[2, :] / 90, rtol=1e-10)
+        # Calculate the expected rescaled data
+        medians = np.median(data_with_zero_row, axis=1, keepdims=True)
+        medians_safe = np.where(medians == 0, 1, medians)
+        normalized_before_rescaling = data_with_zero_row / medians_safe
+        mean_median = np.mean([1, 60, 90]) # (1 + 60 + 90) / 3 = 151/3
+        expected_normalized = normalized_before_rescaling * mean_median
+        # The zero row should remain zero after normalization and rescaling
+        expected_normalized[0, :] = 0.0
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
+
+        # Check that the first row (originally all zeros) remains all zeros
+        assert_allclose(normalized[0, :], [0.0, 0.0, 0.0, 0.0, 0.0], atol=1e-10)
+
+    def test_normalize_even_features(self):
+        """Test normalization with an even number of features."""
+        # Create data with an even number of features
+        data_with_even_features = np.array([
+            [10, 20, 30, 40],
+            [20, 40, 60, 80],
+            [30, 60, 90, 120]
+        ])
         
-        # For the row with zero median, the values should be equal to the original values
-        # since we replace the zero median with 1.0
-        assert_allclose(normalized[0, :], data_with_zero_row[0, :], rtol=1e-10)
+        # Normalize data
+        normalized = self.normalizer.normalize(data_with_even_features)
+        
+        # Check that the scaling factors were stored
+        assert self.normalizer.scaling_factors is not None
+        assert_allclose(self.normalizer.scaling_factors, [25, 50, 75])
+        
+        # Calculate the expected rescaled data
+        medians = np.median(data_with_even_features, axis=1, keepdims=True)
+        normalized_before_rescaling = data_with_even_features / medians
+        mean_median = np.mean([25, 50, 75]) # 50
+        expected_normalized = normalized_before_rescaling * mean_median
+
+        # Check the normalized values against the expected rescaled values
+        assert_allclose(normalized, expected_normalized, rtol=1e-10)
+        
+        # Check specific values
+        expected = np.array([
+            [10/25, 20/25, 30/25, 40/25],
+            [20/50, 40/50, 60/50, 80/50],
+            [30/75, 60/75, 90/75, 120/75]
+        ])
+        expected = expected * mean_median
+        assert_allclose(normalized, expected, rtol=1e-10)
     
     def test_normalize_with_nan_values(self):
         """Test that normalization raises an error with NaN values."""
