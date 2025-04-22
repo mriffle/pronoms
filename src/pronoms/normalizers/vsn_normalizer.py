@@ -124,14 +124,8 @@ class VSNNormalizer:
             
             # Store VSN parameters
             if 'parameters' in results:
-                # Convert the R list-like object to a Python dict for easier access
-                r_params = results['parameters']
-                self.vsn_params = {}
-                # Access elements using string keys after conversion
-                # Note: Accessing R list elements might require checking names
-                param_names = list(r_params.names)
-                if 'coefficients' in param_names:
-                     self.vsn_params['coefficients'] = np.array(r_params.rx2('coefficients'))
+                # Directly store the parameters dict from results
+                self.vsn_params = results['parameters']
         
             return normalized_data
             

@@ -191,12 +191,12 @@ class TestVSNNormalizer:
             normalizer.normalize(self.data)
     
     @patch('matplotlib.pyplot.Figure')
-    @patch('pronoms.normalizers.vsn_normalizer.create_hexbin_comparison')
-    def test_plot_comparison(self, mock_create_hexbin, mock_figure):
+    @patch('pronoms.normalizers.vsn_normalizer.plot_comparison_hexbin')
+    def test_plot_comparison(self, mock_plot_comparison_hexbin, mock_figure):
         """Test plot_comparison method."""
-        # Mock the result of create_hexbin_comparison
+        # Mock the result of plot_comparison_hexbin
         mock_fig = MagicMock()
-        mock_create_hexbin.return_value = mock_fig
+        mock_plot_comparison_hexbin.return_value = mock_fig
         
         # Create normalizer
         normalizer = VSNNormalizer()
@@ -207,13 +207,15 @@ class TestVSNNormalizer:
         # Call plot_comparison
         result = normalizer.plot_comparison(self.data, self.data)
         
-        # Check that create_hexbin_comparison was called
-        mock_create_hexbin.assert_called_once_with(
-            self.data, self.data,
-            figsize=(10, 8),
-            title="VSN Normalization Comparison",
-            xlabel="Before VSN Normalization",
-            ylabel="After VSN Normalization"
+        # Check that plot_comparison_hexbin was called
+        mock_plot_comparison_hexbin.assert_called_once_with(
+            before_data=self.data,
+            after_data=self.data,
+            figsize=(8, 8),
+            title="VSN Normalization Comparison (glog2 vs log2)",
+            gridsize=50,
+            cmap='viridis',
+            transform_original='log2'
         )
         
         # Check that the result is the mocked figure

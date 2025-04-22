@@ -97,37 +97,15 @@ class TestMedianNormalizer:
         assert_allclose(normalized, expected, rtol=1e-10)
     
     def test_normalize_with_zero_row(self):
-        """Test normalization with a row of all zeros."""
-        # Create data with a row having zero median
+        """Test normalization with a row of all zeros should raise an error."""
         data_with_zero_row = np.array([
             [0, 0, 0, 0, 0],
             [20, 40, 60, 80, 100],
             [30, 60, 90, 120, 150]
         ])
-        
-        # Normalize data
-        normalized = self.normalizer.normalize(data_with_zero_row)
-        
-        # Check that the scaling factors were stored
-        # The first row has median 0, but should be replaced with 1.0 to avoid division by zero
-        assert self.normalizer.scaling_factors is not None
-        assert_allclose(self.normalizer.scaling_factors, [1, 60, 90])
-        
-        # Calculate the expected rescaled data
-        medians = np.median(data_with_zero_row, axis=1, keepdims=True)
-        medians_safe = np.where(medians == 0, 1, medians)
-        normalized_before_rescaling = data_with_zero_row / medians_safe
-        mean_median = np.mean([1, 60, 90]) # (1 + 60 + 90) / 3 = 151/3
-        expected_normalized = normalized_before_rescaling * mean_median
-        # The zero row should remain zero after normalization and rescaling
-        expected_normalized[0, :] = 0.0
-
-        # Check the normalized values against the expected rescaled values
-        assert_allclose(normalized, expected_normalized, rtol=1e-10)
-
-        # Check that the first row (originally all zeros) remains all zeros
-        assert_allclose(normalized[0, :], [0.0, 0.0, 0.0, 0.0, 0.0], atol=1e-10)
-
+        with pytest.raises(ValueError, match="All sample medians must be > 0"):  # Zero median row
+            self.normalizer.normalize(data_with_zero_row)
+    
     def test_normalize_even_features(self):
         """Test normalization with an even number of features."""
         # Create data with an even number of features

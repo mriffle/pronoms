@@ -84,8 +84,8 @@ class MedianNormalizer:
         # Store scaling state
         mean_of_medians = float(np.mean(medians))
         medians = medians.reshape(-1, 1)
-        self.scaling_factors   = medians.flatten()
-        self.mean_of_medians   = mean_of_medians
+        self.scaling_factors = medians.flatten()
+        self.mean_of_medians = mean_of_medians
 
         # Apply normalization
         normalized_data = (X / medians) * mean_of_medians
