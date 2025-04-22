@@ -35,65 +35,61 @@ class MedianNormalizer:
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """
         Perform median normalization on input data X.
-        
+
         Parameters
         ----------
         X : np.ndarray
             Input data matrix with shape (n_samples, n_features).
             Each row represents a sample, each column represents a feature/protein.
-        
+
         Returns
         -------
         np.ndarray
             Normalized data matrix with the same shape as X.
-        
+
         Raises
         ------
         ValueError
-            If input data contains NaN or Inf values.
+            - If input is not a 2D array with at least one feature.
+            - If input data contains NaN or Inf values.
+            - If any sample’s median is ≤ 0 (protein quantities must be positive).
+        Attributes
+        ----------
+        scaling_factors : np.ndarray
+            The per-sample medians used for scaling.
+        mean_of_medians : float
+            The average of all sample medians, used to preserve overall scale.
         """
-        # Validate input data
+        # Dimensionality guard
+        if X.ndim != 2 or X.shape[1] == 0:
+            raise ValueError("X must be a 2D array with at least one feature (n_samples, n_features).")
+
+        # Validate input data (dtype conversion, etc.)
         X = validate_input_data(X)
-        
+
         # Check for NaN or Inf values
         has_nan_inf, _ = check_nan_inf(X)
         if has_nan_inf:
             raise ValueError(
                 "Input data contains NaN or Inf values. Please handle these values before normalization."
             )
-        
-        # Calculate median for each sample (row) using faster partition method
-        # This is O(n) instead of O(n log n) for large arrays
-        n_features = X.shape[1]
-        k = n_features // 2
-        
-        # Use np.partition which is much faster than sorting for finding medians
-        if n_features % 2 == 1:  # Odd number of elements
-            # For odd number of elements, median is the middle element
-            medians = np.partition(X, k, axis=1)[:, k]
-        else:  # Even number of elements
-            # For even number of elements, median is the average of the two middle elements
-            medians_high = np.partition(X, k, axis=1)[:, k]
-            medians_low = np.partition(X, k-1, axis=1)[:, k-1]
-            medians = (medians_high + medians_low) / 2
-        
-        # Replace zero medians with 1.0 to avoid division by zero
-        medians_safe = np.where(medians == 0, 1.0, medians)
-        
-        # Calculate mean of medians to preserve original scale
-        mean_of_medians = np.mean(medians_safe)
-        
-        # Add keepdims for broadcasting
-        medians_safe = medians_safe.reshape(-1, 1)
-        
-        # Store scaling factors
-        self.scaling_factors = medians_safe.flatten()
-        self.mean_of_medians = mean_of_medians  # Store for reference
-        
-        # Normalize each sample by its median and multiply by mean of medians
-        # to preserve the original scale of the data
-        normalized_data = (X / medians_safe) * mean_of_medians
-        
+
+        # Compute per-sample medians
+        medians = np.median(X, axis=1)
+
+        # Enforce strictly positive medians
+        if np.any(medians <= 0):
+            raise ValueError("All sample medians must be > 0.")
+
+        # Store scaling state
+        mean_of_medians = float(np.mean(medians))
+        medians = medians.reshape(-1, 1)
+        self.scaling_factors   = medians.flatten()
+        self.mean_of_medians   = mean_of_medians
+
+        # Apply normalization
+        normalized_data = (X / medians) * mean_of_medians
+
         return normalized_data
     
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
