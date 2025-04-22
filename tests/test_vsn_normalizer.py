@@ -191,32 +191,33 @@ class TestVSNNormalizer:
             normalizer.normalize(self.data)
     
     @patch('matplotlib.pyplot.Figure')
-    @patch('pronoms.normalizers.vsn_normalizer.create_comparison_plot')
-    def test_plot_comparison(self, mock_create_plot, mock_figure):
+    @patch('pronoms.normalizers.vsn_normalizer.create_hexbin_comparison')
+    def test_plot_comparison(self, mock_create_hexbin, mock_figure):
         """Test plot_comparison method."""
-        # Mock the result of create_comparison_plot
+        # Mock the result of create_hexbin_comparison
         mock_fig = MagicMock()
-        mock_axes = MagicMock()
-        mock_create_plot.return_value = (mock_fig, mock_axes)
+        mock_create_hexbin.return_value = mock_fig
         
-        # Mock plt.subplots
-        mock_fig2 = MagicMock()
-        mock_axes2 = (MagicMock(), MagicMock())
+        # Create normalizer
+        normalizer = VSNNormalizer()
         
-        with patch('matplotlib.pyplot.subplots', return_value=(mock_fig2, mock_axes2)):
-            # Create normalizer
-            normalizer = VSNNormalizer()
-            
-            # Call plot_comparison
-            result = normalizer.plot_comparison(self.data, self.data)
-            
-            # Check that create_comparison_plot was called
-            mock_create_plot.assert_called_once()
-            
-            # Check that the result is a tuple of the mocked figures
-            assert isinstance(result, tuple)
-            assert result[0] == mock_fig
-            assert result[1] == mock_fig2
+        # Set VSN parameters for testing
+        normalizer.vsn_params = self.mock_params
+        
+        # Call plot_comparison
+        result = normalizer.plot_comparison(self.data, self.data)
+        
+        # Check that create_hexbin_comparison was called
+        mock_create_hexbin.assert_called_once_with(
+            self.data, self.data,
+            figsize=(10, 8),
+            title="VSN Normalization Comparison",
+            xlabel="Before VSN Normalization",
+            ylabel="After VSN Normalization"
+        )
+        
+        # Check that the result is the mocked figure
+        assert result == mock_fig
             
     def _is_r_vsn_available():
         """Check if R and the VSN package are available."""

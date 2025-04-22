@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from typing import Optional, List, Tuple
 
 from ..utils.validators import validate_input_data, check_nan_inf
-from ..utils.plotting import create_comparison_plot
+from ..utils.plotting import create_hexbin_comparison
 
 
 class QuantileNormalizer:
@@ -91,12 +91,11 @@ class QuantileNormalizer:
         
         return normalized_data
     
-    def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
-                       sample_names: Optional[List[str]] = None,
-                       figsize: Tuple[int, int] = (15, 8),
+    def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray,
+                       figsize: Tuple[int, int] = (10, 8),
                        title: str = "Quantile Normalization Comparison") -> plt.Figure:
         """
-        Plot data before vs after normalization.
+        Plot data before vs after normalization using a 2D hexbin density plot.
         
         Parameters
         ----------
@@ -104,58 +103,37 @@ class QuantileNormalizer:
             Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
             Data after normalization, shape (n_samples, n_features).
-        sample_names : Optional[List[str]], optional
-            Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional
-            Figure size, by default (15, 8).
+            Figure size, by default (10, 8).
         title : str, optional
             Plot title, by default "Quantile Normalization Comparison".
         
         Returns
         -------
         plt.Figure
-            Figure object containing the comparison plots.
+            Figure object containing the hexbin density plot.
         """
         # Validate input data
         before_data = validate_input_data(before_data)
         after_data = validate_input_data(after_data)
         
-        # Create comparison plot
-        fig, axes = create_comparison_plot(
+        # Create hexbin comparison plot
+        fig = create_hexbin_comparison(
             before_data,
             after_data,
             figsize=figsize,
             title=title,
-            before_label="Before Quantile Normalization",
-            after_label="After Quantile Normalization",
-            sample_names=sample_names,
+            xlabel="Before Quantile Normalization",
+            ylabel="After Quantile Normalization"
         )
         
-        # If reference distribution is available, add a fourth plot showing it
-        if self.reference_distribution is not None and len(axes) == 3:
-            # Create a new figure for the reference distribution
-            fig2, ax = plt.subplots(figsize=(8, 6))
-            
-            # Plot the reference distribution as a histogram
-            ax.hist(self.reference_distribution, bins=50, alpha=0.7, color='green')
-            ax.set_title("Reference Distribution")
-            ax.set_xlabel("Intensity")
-            ax.set_ylabel("Frequency")
-            
-            # Add text explaining what the reference distribution is
-            ax.text(
-                0.05, 0.95, 
-                "This is the reference distribution\nused for quantile normalization.\n"
-                "All samples are transformed to match\nthis distribution.",
-                transform=ax.transAxes,
-                fontsize=10,
-                verticalalignment='top',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
+        # If reference distribution is available, add a note about it
+        if self.reference_distribution is not None:
+            plt.figtext(
+                0.01, 0.01,
+                "Quantile normalization transforms all samples\nto match a common reference distribution.",
+                fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8)
             )
-            
-            plt.tight_layout()
-            
-            # Return both figures
-            return fig, fig2
         
         return fig

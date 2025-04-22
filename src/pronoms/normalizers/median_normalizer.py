@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from typing import Optional, List, Tuple
 
 from ..utils.validators import validate_input_data, check_nan_inf
-from ..utils.plotting import create_comparison_plot
+from ..utils.plotting import create_hexbin_comparison
 
 
 class MedianNormalizer:
@@ -30,6 +30,7 @@ class MedianNormalizer:
     def __init__(self):
         """Initialize the MedianNormalizer."""
         self.scaling_factors = None
+        self.mean_of_medians = None
     
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """
@@ -76,6 +77,9 @@ class MedianNormalizer:
             medians_low = np.partition(X, k-1, axis=1)[:, k-1]
             medians = (medians_high + medians_low) / 2
         
+        # Calculate mean of medians to preserve original scale
+        mean_of_medians = np.mean(medians)
+        
         # Add keepdims for broadcasting
         medians = medians.reshape(-1, 1)
         
@@ -84,17 +88,19 @@ class MedianNormalizer:
         
         # Store scaling factors
         self.scaling_factors = medians.flatten()
+        self.mean_of_medians = mean_of_medians  # Store for reference
         
-        # Normalize each sample by its median
-        normalized_data = X / medians
+        # Normalize each sample by its median and multiply by mean of medians
+        # to preserve the original scale of the data
+        normalized_data = (X / medians) * mean_of_medians
+        
         return normalized_data
     
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
-                       sample_names: Optional[List[str]] = None,
-                       figsize: Tuple[int, int] = (15, 8),
+                       figsize: Tuple[int, int] = (10, 8),
                        title: str = "Median Normalization Comparison") -> plt.Figure:
         """
-        Plot data before vs after normalization.
+        Plot data before vs after normalization using a 2D hexbin density plot.
         
         Parameters
         ----------
@@ -102,44 +108,28 @@ class MedianNormalizer:
             Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
             Data after normalization, shape (n_samples, n_features).
-        sample_names : Optional[List[str]], optional
-            Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional
-            Figure size, by default (15, 8).
+            Figure size, by default (10, 8).
         title : str, optional
             Plot title, by default "Median Normalization Comparison".
         
         Returns
         -------
         plt.Figure
-            Figure object containing the comparison plots.
+            Figure object containing the hexbin density plot.
         """
         # Validate input data
         before_data = validate_input_data(before_data)
         after_data = validate_input_data(after_data)
         
-        # Create comparison plot
-        fig, _ = create_comparison_plot(
+        # Create hexbin comparison plot
+        fig = create_hexbin_comparison(
             before_data,
             after_data,
             figsize=figsize,
             title=title,
-            before_label="Before Median Normalization",
-            after_label="After Median Normalization",
-            sample_names=sample_names,
+            xlabel="Before Median Normalization",
+            ylabel="After Median Normalization"
         )
-        
-        # If scaling factors are available, add them to the plot
-        if self.scaling_factors is not None:
-            factor_text = "Scaling Factors:\n"
-            for i, factor in enumerate(self.scaling_factors):
-                sample_name = f"Sample {i}" if sample_names is None else sample_names[i]
-                factor_text += f"{sample_name}: {factor:.3f}\n"
-            
-            # Add text box with scaling factors
-            plt.figtext(
-                0.01, 0.01, factor_text, fontsize=9,
-                bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8)
-            )
         
         return fig

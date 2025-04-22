@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from typing import Optional, List, Tuple, Dict, Any
 
 from ..utils.validators import validate_input_data, check_nan_inf
-from ..utils.plotting import create_comparison_plot
+from ..utils.plotting import create_hexbin_comparison
 from ..utils.r_interface import setup_r_environment, run_r_script
 
 
@@ -178,11 +178,10 @@ class VSNNormalizer:
         return script
     
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
-                       sample_names: Optional[List[str]] = None,
-                       figsize: Tuple[int, int] = (15, 8),
+                       figsize: Tuple[int, int] = (10, 8),
                        title: str = "VSN Normalization Comparison") -> plt.Figure:
         """
-        Plot data before vs after normalization.
+        Plot data before vs after normalization using a 2D hexbin density plot.
         
         Parameters
         ----------
@@ -190,79 +189,48 @@ class VSNNormalizer:
             Data before normalization, shape (n_samples, n_features).
         after_data : np.ndarray
             Data after normalization, shape (n_samples, n_features).
-        sample_names : Optional[List[str]], optional
-            Names for the samples, by default None (uses indices).
         figsize : Tuple[int, int], optional
-            Figure size, by default (15, 8).
+            Figure size, by default (10, 8).
         title : str, optional
             Plot title, by default "VSN Normalization Comparison".
         
         Returns
         -------
         plt.Figure
-            Figure object containing the comparison plots.
+            Figure object containing the hexbin density plot.
         """
         # Validate input data
         before_data = validate_input_data(before_data)
         after_data = validate_input_data(after_data)
         
-        # Create comparison plot
-        fig, _ = create_comparison_plot(
+        # Create hexbin comparison plot
+        fig = create_hexbin_comparison(
             before_data,
             after_data,
             figsize=figsize,
             title=title,
-            before_label="Before VSN Normalization",
-            after_label="After VSN Normalization",
-            sample_names=sample_names,
+            xlabel="Before VSN Normalization",
+            ylabel="After VSN Normalization"
         )
         
-        # Add additional plot showing mean-variance relationship
-        # This is a key diagnostic for VSN normalization
-        fig2, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+        # If VSN parameters are available, add them to the plot
+        if self.vsn_params is not None:
+            # Create a string with the VSN parameters
+            param_text = "VSN Parameters:\n"
+            
+            # Add only the most important parameters to avoid cluttering
+            if 'stdev' in self.vsn_params:
+                stdev = self.vsn_params['stdev']
+                param_text += f"Stdev: {stdev:.3f}\n"
+            
+            if 'reference' in self.vsn_params:
+                ref = self.vsn_params['reference']
+                param_text += f"Reference: {ref}\n"
+            
+            # Add text box with VSN parameters
+            plt.figtext(
+                0.01, 0.01, param_text, fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.8)
+            )
         
-        # Calculate mean and standard deviation for each feature before normalization
-        mean_before = np.nanmean(before_data, axis=0)
-        std_before = np.nanstd(before_data, axis=0)
-        
-        # Calculate mean and standard deviation for each feature after normalization
-        mean_after = np.nanmean(after_data, axis=0)
-        std_after = np.nanstd(after_data, axis=0)
-        
-        # Plot mean vs standard deviation before normalization
-        ax1.scatter(mean_before, std_before, alpha=0.5, s=5)
-        ax1.set_title("Before VSN: Mean-Variance Relationship")
-        ax1.set_xlabel("Mean")
-        ax1.set_ylabel("Standard Deviation")
-        
-        # Plot mean vs standard deviation after normalization
-        ax2.scatter(mean_after, std_after, alpha=0.5, s=5, color='green')
-        ax2.set_title("After VSN: Mean-Variance Relationship")
-        ax2.set_xlabel("Mean")
-        ax2.set_ylabel("Standard Deviation")
-        
-        # Add a horizontal line at the median standard deviation after normalization
-        median_std = np.nanmedian(std_after)
-        ax2.axhline(median_std, color='red', linestyle='--', alpha=0.7)
-        ax2.text(
-            0.05, 0.95, 
-            f"Median SD: {median_std:.3f}",
-            transform=ax2.transAxes,
-            fontsize=10,
-            verticalalignment='top',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8)
-        )
-        
-        # Add explanation text
-        fig2.suptitle("VSN Normalization Effect on Variance", fontsize=14)
-        plt.figtext(
-            0.5, 0.01,
-            "VSN aims to stabilize variance across the intensity range.\n"
-            "After successful normalization, the standard deviation should be\n"
-            "approximately constant and independent of the mean.",
-            ha='center', fontsize=10
-        )
-        
-        plt.tight_layout(rect=[0, 0.05, 1, 0.95])
-        
-        return fig, fig2
+        return fig
