@@ -12,6 +12,7 @@ Pronoms provides flexible normalization methods for proteomics quantitative data
    quantile_normalizer
    l1_normalizer
    vsn_normalizer
+   splm_normalizer
 
 Indices and tables
 ==================

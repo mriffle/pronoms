@@ -13,6 +13,7 @@ __all__ = [
     "QuantileNormalizer",
     "L1Normalizer",
     "VSNNormalizer",
+    "SPLMNormalizer",
 ]
 
 # Lazy-load VSNNormalizer to avoid rpy2 import on package import
@@ -20,6 +21,9 @@ def __getattr__(name: str):
     if name == "VSNNormalizer":
         from .vsn_normalizer import VSNNormalizer
         return VSNNormalizer
+    elif name == "SPLMNormalizer":
+        from .splm_normalizer import SPLMNormalizer
+        return SPLMNormalizer
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 def __dir__():
