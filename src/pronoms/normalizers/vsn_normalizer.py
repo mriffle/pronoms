@@ -29,7 +29,7 @@ class VSNNormalizer:
         Only available after calling normalize().
     """
     
-    def __init__(self, calib: str = "affine", reference_sample: Optional[int] = None):
+    def __init__(self, calib: str = "affine", reference_sample: Optional[int] = None, lts_quantile: float = 0.75):
         """
         Initialize the VSNNormalizer.
         
@@ -41,9 +41,15 @@ class VSNNormalizer:
         reference_sample : Optional[int], optional
             Index of the reference sample to calibrate against, by default None.
             If None, the vsn package will choose a reference automatically.
+        lts_quantile : float, optional
+            Quantile for the resistant regression (Linear Threshold Shift), by default 0.75.
+            Controls the robustness of the normalization. Must be between 0 and 1.
         """
         self.calib = calib
         self.reference_sample = reference_sample
+        if not 0 <= lts_quantile <= 1:
+            raise ValueError("lts_quantile must be between 0 and 1")
+        self.lts_quantile = lts_quantile
         self.vsn_params = None
         
         # Check R environment and required packages
@@ -161,7 +167,7 @@ class VSNNormalizer:
         """
         
         # Conditionally add reference parameter to vsn2 call
-        vsn2_call_base = "vsn2(eset, minDataPointsPerStratum = 3, lts.quantile = 0.75"
+        vsn2_call_base = f"vsn2(eset, minDataPointsPerStratum = 3, lts.quantile = {self.lts_quantile}"
         if self.reference_sample is not None:
             ref_index = self.reference_sample + 1 # R is 1-indexed
             vsn2_call = f"{vsn2_call_base}, reference = {ref_index})"

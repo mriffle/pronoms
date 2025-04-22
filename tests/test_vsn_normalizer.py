@@ -37,16 +37,27 @@ class TestVSNNormalizer:
         }
     
     @pytest.mark.parametrize("calib", ["affine", "none", "shift", "maximum"])
-    def test_init(self, calib):
+    @patch('pronoms.normalizers.vsn_normalizer.setup_r_environment') 
+    def test_init(self, mock_setup, calib):
         """Test initialization with different parameters."""
         # Create normalizer with different parameters
-        normalizer = VSNNormalizer(calib=calib, reference_sample=1)
+        lts_quantile_test = 0.5 
+        normalizer = VSNNormalizer(calib=calib, reference_sample=1, lts_quantile=lts_quantile_test)
         
         # Check that parameters were stored
         assert normalizer.calib == calib
         assert normalizer.reference_sample == 1
+        assert normalizer.lts_quantile == lts_quantile_test
         assert normalizer.vsn_params is None
-    
+
+    @patch('pronoms.normalizers.vsn_normalizer.setup_r_environment') 
+    def test_init_invalid_lts_quantile(self, mock_setup):
+        """Test initialization raises ValueError for invalid lts_quantile."""
+        with pytest.raises(ValueError, match="lts_quantile must be between 0 and 1"):
+            VSNNormalizer(lts_quantile=-0.1)
+        with pytest.raises(ValueError, match="lts_quantile must be between 0 and 1"):
+            VSNNormalizer(lts_quantile=1.1)
+
     @patch('pronoms.normalizers.vsn_normalizer.setup_r_environment')
     def test_check_r_dependencies(self, mock_setup):
         """Test R dependencies check."""
