@@ -19,7 +19,9 @@ def create_hexbin_comparison(
     gridsize: int = 50,
     cmap: str = "viridis",
     add_identity_line: bool = True,
-    transform_original: Optional[str] = None
+    transform_original: Optional[str] = None,
+    autoscale_y: bool = False,
+    add_center_line_y0: bool = False
 ) -> plt.Figure:
     """
     Create a 2D hexbin density plot comparing values before and after normalization.
@@ -48,6 +50,12 @@ def create_hexbin_comparison(
         Apply a transformation to the 'before_data' before plotting.
         String indicating transformation type (e.g., 'log2'). Currently only 'log2' is supported.
         If 'log2', np.log2(before_data + 1) is plotted on the x-axis.
+    autoscale_y : bool, optional
+        If True, allow the y-axis to scale independently based on the range of 'after_data'.
+        If False (default), forces an equal aspect ratio for x and y axes.
+    add_center_line_y0 : bool, optional
+        If True, add a horizontal reference line at y=0. Overrides `add_identity_line`.
+        By default False.
         
     Returns
     -------
@@ -92,21 +100,29 @@ def create_hexbin_comparison(
     # Add colorbar
     cb = fig.colorbar(hb, ax=ax, label='log10(count)')
     
-    # Add identity line (y=x) if requested
-    if add_identity_line:
+    # Add reference lines based on parameters
+    if add_center_line_y0:
+        ax.axhline(0, color='red', linestyle='--', linewidth=1, label='y = 0')
+        # Ensure legend includes this if added
+        ax.legend()
+    elif add_identity_line and not autoscale_y:
+        # Only add identity line if axes aspect ratio is equal and center line wasn't added
         lims = [
             np.min([ax.get_xlim(), ax.get_ylim()]),
             np.max([ax.get_xlim(), ax.get_ylim()]),
         ]
-        ax.plot(lims, lims, 'r--', alpha=0.7, zorder=0)
+        ax.plot(lims, lims, 'r--', alpha=0.7, zorder=0, label='y = x')
+        # Ensure legend includes this if added
+        ax.legend()
     
     # Set labels and title
     ax.set_xlabel(x_label)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     
-    # Make axes equal
-    ax.set_aspect('equal', adjustable='box')
+    # Set aspect ratio only if y-axis autoscaling is not requested
+    if not autoscale_y:
+        ax.set_aspect('equal', adjustable='box')
     
     # Adjust layout
     plt.tight_layout()
