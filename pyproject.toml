@@ -14,7 +14,12 @@ dependencies = [
     "numpy>=1.24",
     "pandas>=2.0",
     "matplotlib>=3.7",
-    "rpy2>=3.5"  # R integration
+    "rpy2>=3.5",  # R integration
+    "scipy >= 1.6.0", # Added from previous normalizers
+    "scikit-learn >= 0.24.0", # Added from previous normalizers
+    "seaborn >= 0.11.0", # Added from previous normalizers
+    "statsmodels >= 0.12.0", # Added from previous normalizers
+    "directlfq[dask] >= 0.3.2" # Added for DirectLFQNormalizer, lowered version
 ]
 
 [project.optional-dependencies]

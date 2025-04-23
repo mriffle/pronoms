@@ -45,6 +45,7 @@ normalizer.plot_comparison(data, normalized_data)
 ```
 
 ### Available Normalizers
+*   **DirectLFQNormalizer**: Performs protein quantification directly from peptide/ion intensity data using the DirectLFQ algorithm. Returns four items: normalized protein matrix, normalized ion matrix, protein IDs, and peptide IDs.
 *   **L1Normalizer**: Scales samples to have a unit L1 norm (sum of absolute values).
 *   **MADNormalizer**: Median Absolute Deviation Normalization. Robustly scales samples by subtracting the median and dividing by the Median Absolute Deviation (MAD).
 *   **MedianNormalizer**: Scales each sample (row) by its median, then rescales by the mean of medians to preserve overall scale.
