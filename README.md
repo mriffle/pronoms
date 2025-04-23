@@ -45,13 +45,13 @@ normalizer.plot_comparison(data, normalized_data)
 ```
 
 ### Available Normalizers
-*   **MedianNormalizer**: Scales each sample (row) by its median, then rescales by the mean of medians to preserve overall scale.
-*   **QuantileNormalizer**: Normalizes samples to have the same distribution using quantile mapping.
 *   **L1Normalizer**: Scales samples to have a unit L1 norm (sum of absolute values).
-*   **VSNNormalizer**: Variance Stabilizing Normalization (via R's `vsn` package). Stabilizes variance across the intensity range.
-*   **SPLMNormalizer**: Stable Protein Log-Mean Normalization. Uses stably expressed proteins (low log-space CV) to derive scaling factors for normalization in log-space, then transforms back.
-*   **MedianPolishNormalizer**: Tukey's Median Polish. Decomposes data (often log-transformed) into overall, row, column, and residual effects by iterative median removal.
 *   **MADNormalizer**: Median Absolute Deviation Normalization. Robustly scales samples by subtracting the median and dividing by the Median Absolute Deviation (MAD).
+*   **MedianNormalizer**: Scales each sample (row) by its median, then rescales by the mean of medians to preserve overall scale.
+*   **MedianPolishNormalizer**: Tukey's Median Polish. Decomposes data (often log-transformed) into overall, row, column, and residual effects by iterative median removal.
+*   **QuantileNormalizer**: Normalizes samples to have the same distribution using quantile mapping.
+*   **SPLMNormalizer**: Stable Protein Log-Mean Normalization. Uses stably expressed proteins (low log-space CV) to derive scaling factors for normalization in log-space, then transforms back.
+*   **VSNNormalizer**: Variance Stabilizing Normalization (via R's `vsn` package). Stabilizes variance across the intensity range.
 
 ### Data Format
 All normalizers expect data in the format of a 2D numpy array or pandas DataFrame with shape `(n_samples, n_features)` where:
