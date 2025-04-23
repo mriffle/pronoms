@@ -51,6 +51,7 @@ normalizer.plot_comparison(data, normalized_data)
 *   **VSNNormalizer**: Variance Stabilizing Normalization (via R's `vsn` package). Stabilizes variance across the intensity range.
 *   **SPLMNormalizer**: Stable Protein Log-Mean Normalization. Uses stably expressed proteins (low log-space CV) to derive scaling factors for normalization in log-space, then transforms back.
 *   **MedianPolishNormalizer**: Tukey's Median Polish. Decomposes data (often log-transformed) into overall, row, column, and residual effects by iterative median removal.
+*   **MADNormalizer**: Median Absolute Deviation Normalization. Robustly scales samples by subtracting the median and dividing by the Median Absolute Deviation (MAD).
 
 ### Data Format
 All normalizers expect data in the format of a 2D numpy array or pandas DataFrame with shape `(n_samples, n_features)` where:

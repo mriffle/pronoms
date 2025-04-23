@@ -9,6 +9,7 @@ from .median_normalizer import MedianNormalizer
 from .quantile_normalizer import QuantileNormalizer
 from .l1_normalizer import L1Normalizer
 from .median_polish_normalizer import MedianPolishNormalizer
+from .mad_normalizer import MADNormalizer
 
 __all__ = [
     "MedianNormalizer",
@@ -17,6 +18,7 @@ __all__ = [
     "VSNNormalizer",
     "SPLMNormalizer",
     "MedianPolishNormalizer",
+    "MADNormalizer",
 ]
 
 # Lazy-load VSNNormalizer to avoid rpy2 import on package import
@@ -31,6 +33,7 @@ _AVAILABLE = {
     "L1Normalizer": ".l1_normalizer",
     "SPLMNormalizer": ".splm_normalizer",
     "MedianPolishNormalizer": ".median_polish_normalizer",
+    "MADNormalizer": ".mad_normalizer",
 }
 
 def __getattr__(name):
