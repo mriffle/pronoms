@@ -117,7 +117,8 @@ class MADNormalizer:
         if np.any(row_mads == 0):
             zero_mad_indices = np.where(row_mads.flatten() == 0)[0]
             raise ValueError(
-                f"Cannot normalize: MAD of {scale_type} data is zero for sample(s) at index/indices: {list(zero_mad_indices)}. "
+                # Explicitly convert indices to int for consistent string formatting
+                f"Cannot normalize: MAD of {scale_type} data is zero for sample(s) at index/indices: {[int(i) for i in zero_mad_indices]}. "
                 f"This usually means all {scale_type} values in the sample are identical."
             )
 
