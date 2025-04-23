@@ -45,10 +45,12 @@ normalizer.plot_comparison(data, normalized_data)
 ```
 
 ### Available Normalizers
-- `MedianNormalizer`: Normalizes data by scaling each sample (row) by its median
-- `QuantileNormalizer`: Applies quantile normalization across samples
-- `L1Normalizer`: Normalizes data by scaling each sample (row) to have an L1 norm of 1
-- `VSNNormalizer`: Implements Variance Stabilizing Normalization (requires R)
+*   **MedianNormalizer**: Scales each sample (row) by its median, then rescales by the mean of medians to preserve overall scale.
+*   **QuantileNormalizer**: Normalizes samples to have the same distribution using quantile mapping.
+*   **L1Normalizer**: Scales samples to have a unit L1 norm (sum of absolute values).
+*   **VSNNormalizer**: Variance Stabilizing Normalization (via R's `vsn` package). Stabilizes variance across the intensity range.
+*   **SPLMNormalizer**: Stable Protein Log-Mean Normalization. Uses stably expressed proteins (low log-space CV) to derive scaling factors for normalization in log-space, then transforms back.
+*   **MedianPolishNormalizer**: Tukey's Median Polish. Decomposes data (often log-transformed) into overall, row, column, and residual effects by iterative median removal.
 
 ### Data Format
 All normalizers expect data in the format of a 2D numpy array or pandas DataFrame with shape `(n_samples, n_features)` where:
