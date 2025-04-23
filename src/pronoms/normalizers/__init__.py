@@ -4,9 +4,11 @@ Normalizers module for Pronoms.
 This module contains various normalization methods for proteomics data.
 """
 
+import importlib
 from .median_normalizer import MedianNormalizer
 from .quantile_normalizer import QuantileNormalizer
 from .l1_normalizer import L1Normalizer
+from .median_polish_normalizer import MedianPolishNormalizer
 
 __all__ = [
     "MedianNormalizer",
@@ -14,16 +16,31 @@ __all__ = [
     "L1Normalizer",
     "VSNNormalizer",
     "SPLMNormalizer",
+    "MedianPolishNormalizer",
 ]
 
 # Lazy-load VSNNormalizer to avoid rpy2 import on package import
-def __getattr__(name: str):
-    if name == "VSNNormalizer":
-        from .vsn_normalizer import VSNNormalizer
-        return VSNNormalizer
-    elif name == "SPLMNormalizer":
-        from .splm_normalizer import SPLMNormalizer
-        return SPLMNormalizer
+_LAZY_LOADABLE = {
+    "VSNNormalizer": ".vsn_normalizer",
+}
+
+# Directly available
+_AVAILABLE = {
+    "MedianNormalizer": ".median_normalizer",
+    "QuantileNormalizer": ".quantile_normalizer",
+    "L1Normalizer": ".l1_normalizer",
+    "SPLMNormalizer": ".splm_normalizer",
+    "MedianPolishNormalizer": ".median_polish_normalizer",
+}
+
+def __getattr__(name):
+    if name in _LAZY_LOADABLE:
+        module = importlib.import_module(_LAZY_LOADABLE[name], __name__)
+        return getattr(module, name)
+    elif name in _AVAILABLE:
+        module = importlib.import_module(_AVAILABLE[name], __name__)
+        return getattr(module, name)
+
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 def __dir__():
