@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/_static/logo.png" alt="Pronoms Logo" width="180"/>
+</p>
+
 # Pronoms: Proteomics Normalization Python Library
 
 ## Overview
