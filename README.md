@@ -23,7 +23,7 @@ pip install pronoms
 ### Installing for Development
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/pronoms.git
+git clone https://github.com/mriffle/pronoms.git
 cd pronoms
 
 # Install in development mode with dev dependencies
