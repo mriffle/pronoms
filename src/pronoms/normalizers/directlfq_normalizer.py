@@ -104,13 +104,13 @@ class DirectLFQNormalizer:
         Returns
         -------
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-            A tuple containing four NumPy arrays:
-            - protein_matrix: Normalized protein intensities (shape: n_samples, n_proteins).
-            - ion_matrix: Normalized peptide/ion intensities (shape: n_samples, n_peptides).
-            - protein_ids: Array of unique protein identifiers corresponding to the
-              columns of `protein_matrix` (shape: n_proteins,).
-            - peptide_ids: Array of unique peptide/ion identifiers corresponding to the
-              columns of `ion_matrix` (shape: n_peptides,).
+        A tuple containing four NumPy arrays:
+          - protein_matrix: Normalized protein intensities (shape: n_samples, n_proteins).
+          - ion_matrix: Normalized peptide/ion intensities (shape: n_samples, n_peptides).
+          - protein_ids: Array of unique protein identifiers corresponding to the
+            columns of `protein_matrix` (shape: n_proteins,).
+          - peptide_ids: Array of unique peptide/ion identifiers corresponding to the
+            columns of `ion_matrix` (shape: n_peptides,).
 
         Raises
         ------

@@ -53,12 +53,6 @@ class MedianNormalizer:
             - If input is not a 2D array with at least one feature.
             - If input data contains NaN or Inf values.
             - If any sample’s median is ≤ 0 (protein quantities must be positive).
-        Attributes
-        ----------
-        scaling_factors : np.ndarray
-            The per-sample medians used for scaling.
-        mean_of_medians : float
-            The average of all sample medians, used to preserve overall scale.
         """
         # Dimensionality guard
         if X.ndim != 2 or X.shape[1] == 0:

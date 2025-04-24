@@ -29,3 +29,31 @@ Use Cases:
    :members:
    :undoc-members:
    :show-inheritance:
+
+Usage Example
+-------------
+
+.. code-block:: python
+
+    import numpy as np
+    from pronoms.normalizers import MADNormalizer
+
+    # Example data (3 samples, 4 features)
+    data = np.array([
+        [10, 20, 15, 25],
+        [100, 120, 110, 130], # Sample with larger values
+        [5, 8, 6, 9]
+    ])
+
+    # Initialize the normalizer
+    normalizer = MADNormalizer()
+
+    # Normalize the data
+    normalized_data = normalizer.normalize(data)
+
+    print("Original Data:\n", data)
+    print("\nMAD Normalized Data:\n", normalized_data)
+
+    # You can also check the calculated medians and MADs
+    # print("\nMedians:", normalizer.medians_)
+    # print("MADs:", normalizer.mads_)

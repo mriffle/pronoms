@@ -2,18 +2,11 @@ DirectLFQ Normalizer
 =====================
 
 .. automodule:: pronoms.normalizers.directlfq_normalizer
-   :members:
 
 .. autoclass:: pronoms.normalizers.directlfq_normalizer.DirectLFQNormalizer
    :members:
    :undoc-members:
    :show-inheritance:
-   :member-order:bysource
-   :exclude-members: normalize, plot_comparison
-
-   .. automethod:: normalize
-   .. automethod:: plot_comparison
-
 
 Usage Example
 +++++++++++++

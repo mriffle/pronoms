@@ -1,5 +1,5 @@
 MedianNormalizer
-===============
+================
 
 The `MedianNormalizer` scales each sample by its median value.
 
