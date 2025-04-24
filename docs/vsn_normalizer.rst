@@ -26,3 +26,8 @@ Usage Example
     vsn = VSNNormalizer()
     vsn_data = vsn.normalize(data)
     print(vsn_data)
+
+
+Citation
+--------
+Huber W, von Heydebreck A, Sültmann H, Poustka A, Vingron M. Variance stabilization applied to microarray data calibration and to the quantification of differential expression. *Bioinformatics*. 2002;18 Suppl 1:S96–104. `doi:10.1093/bioinformatics/18.suppl_1.s96 <https://doi.org/10.1093/bioinformatics/18.suppl_1.s96>`__, `PMID: 12169536 <https://pubmed.ncbi.nlm.nih.gov/12169536/>`__

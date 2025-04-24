@@ -39,6 +39,11 @@ Usage Example
     )
 
     # norm_prot_matrix contains normalized protein intensities (samples x proteins)
+
+
+Citation
+--------
+Ammar C, Schessner JP, Willems S, Michaelis AC, Mann M. Accurate Label-Free Quantification by directLFQ to Compare Unlimited Numbers of Proteomes. *Mol Cell Proteomics*. 2023 Jul;22(7):100581. `doi:10.1016/j.mcpro.2023.100581 <https://doi.org/10.1016/j.mcpro.2023.100581>`__, `PMID: 37225017 <https://pubmed.ncbi.nlm.nih.gov/37225017/>`__
     # norm_ion_matrix contains normalized peptide/ion intensities (samples x peptides)
     # protein_ids_output contains the unique protein IDs for norm_prot_matrix columns
     # peptide_ids_output contains the unique peptide IDs for norm_ion_matrix columns

@@ -1,21 +1,23 @@
 Welcome to Pronoms documentation!
 =================================
 
-Pronoms provides flexible normalization methods for proteomics quantitative data.
+Pronoms is a Python library providing a suite of normalization methods for quantitative proteomics data. It is designed to help researchers and bioinformaticians preprocess and normalize large-scale proteomics datasets, enabling fair comparison across samples and reducing technical variation. Pronoms includes both classic and modern normalization techniques, some of which leverage R for advanced statistical methods. The library is modular, extensible, and comes with visualization tools to help users assess the effects of normalization.
+
+Use Pronoms if you need robust, reproducible normalization of proteomics data for downstream statistical analysis, biomarker discovery, or comparative proteomics studies.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    usage
-   median_normalizer
-   quantile_normalizer
+   directlfq_normalizer
    l1_normalizer
-   mad_normalizer
+   median_normalizer
    median_polish_normalizer
+   quantile_normalizer
    splm_normalizer
    vsn_normalizer
-   directlfq_normalizer
+   mad_normalizer
 
 Indices and tables
 ==================
