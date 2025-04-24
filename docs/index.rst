@@ -12,12 +12,12 @@ Use Pronoms if you need robust, reproducible normalization of proteomics data fo
    usage
    directlfq_normalizer
    l1_normalizer
+   mad_normalizer
    median_normalizer
    median_polish_normalizer
    quantile_normalizer
    splm_normalizer
    vsn_normalizer
-   mad_normalizer
 
 Indices and tables
 ==================

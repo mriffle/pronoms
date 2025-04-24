@@ -5,11 +5,6 @@ The `L1Normalizer` adjusts each sample so that its sum of absolute values (L1 no
 
 Use L1 normalization when you want to correct for differences in sample loading, instrument response, or total protein amount, ensuring that each sample contributes equally to downstream analyses.
 
-.. automodule:: pronoms.normalizers.l1_normalizer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 Usage Example
 -------------
 .. code-block:: python
@@ -27,3 +22,11 @@ Usage Example
     l1 = L1Normalizer()
     normalized = l1.normalize(data)
     print(normalized)
+
+Class Documentation
+-------------------
+
+.. automodule:: pronoms.normalizers.l1_normalizer
+    :members:
+    :undoc-members:
+    :show-inheritance:

@@ -23,17 +23,6 @@ Use Cases:
  - Removing systematic row (sample) and column (feature) biases.
  - Often used in microarray data analysis and applicable to proteomics.
 
-.. automodule:: pronoms.normalizers.median_polish_normalizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. autoclass:: pronoms.normalizers.MedianPolishNormalizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :inherited-members:
-
 Usage Example
 -------------
 
@@ -72,3 +61,11 @@ Usage Example
     # print("\nOverall Median:", normalizer.overall_)
     # print("Row Effects:", normalizer.row_effects_)
     # print("Column Effects:", normalizer.col_effects_)
+
+Class Documentation
+-------------------
+
+.. automodule:: pronoms.normalizers.median_polish_normalizer
+   :members:
+   :undoc-members:
+   :show-inheritance:

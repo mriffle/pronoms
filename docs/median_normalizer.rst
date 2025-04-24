@@ -5,11 +5,6 @@ The `MedianNormalizer` scales each sample by its median value, then rescales all
 
 Use MedianNormalizer when you want to adjust for global intensity differences across samples in proteomics or other high-throughput data.
 
-.. automodule:: pronoms.normalizers.median_normalizer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 Usage Example
 -------------
 .. code-block:: python
@@ -27,3 +22,11 @@ Usage Example
     mn = MedianNormalizer()
     normalized = mn.normalize(data)
     print(normalized)
+
+Class Documentation
+-------------------
+
+.. automodule:: pronoms.normalizers.median_normalizer
+    :members:
+    :undoc-members:
+    :show-inheritance:

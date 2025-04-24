@@ -26,11 +26,6 @@ Use Cases:
  - Robust scaling of samples when outliers might be present.
  - Standardizing sample distributions based on robust statistics.
 
-.. automodule:: pronoms.normalizers.mad_normalizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Usage Example
 -------------
 
@@ -58,3 +53,12 @@ Usage Example
     # You can also check the calculated medians and MADs
     # print("\nMedians:", normalizer.medians_)
     # print("MADs:", normalizer.mads_)
+
+Class Documentation
+-------------------
+
+.. automodule:: pronoms.normalizers.mad_normalizer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   

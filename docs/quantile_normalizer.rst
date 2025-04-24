@@ -5,11 +5,6 @@ The `QuantileNormalizer` applies quantile normalization to make the empirical di
 
 Use quantile normalization when you want to directly compare samples by ensuring they have the same distribution, such as in large-scale studies or when integrating data from multiple batches.
 
-.. automodule:: pronoms.normalizers.quantile_normalizer
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 Usage Example
 -------------
 .. code-block:: python
@@ -27,3 +22,11 @@ Usage Example
     qn = QuantileNormalizer()
     normalized = qn.normalize(data)
     print(normalized)
+
+Class Documentation
+-------------------
+
+.. automodule:: pronoms.normalizers.quantile_normalizer
+    :members:
+    :undoc-members:
+    :show-inheritance:

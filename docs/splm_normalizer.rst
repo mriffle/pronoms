@@ -33,17 +33,6 @@ The core steps are:
 This process effectively centers the distribution of stable protein intensities
 across samples while preserving the overall intensity profile.
 
-.. automodule:: pronoms.normalizers.splm_normalizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. autoclass:: pronoms.normalizers.SPLMNormalizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-   :inherited-members:
-
 Usage Example
 -------------
 
@@ -74,3 +63,11 @@ Usage Example
     # print("\nIndices of Stable Features:", normalizer.stable_feature_indices_)
     # print("Log Scaling Factors:", normalizer.log_scaling_factors_)
     # print("Grand Mean Log Scaling Factor:", normalizer.grand_mean_log_scaling_factor_)
+
+Class Documentation
+-------------------
+
+.. automodule:: pronoms.normalizers.splm_normalizer
+   :members:
+   :undoc-members:
+   :show-inheritance:
