@@ -1,7 +1,9 @@
 L1Normalizer
 ============
 
-The `L1Normalizer` scales each sample by its L1 norm (sum of absolute values), so each sample has an L1 norm of 1.
+The `L1Normalizer` adjusts each sample so that its sum of absolute values (L1 norm) is 1. This scaling method removes differences in total signal between samples, making them directly comparable regardless of overall intensity.
+
+Use L1 normalization when you want to correct for differences in sample loading, instrument response, or total protein amount, ensuring that each sample contributes equally to downstream analyses.
 
 .. automodule:: pronoms.normalizers.l1_normalizer
     :members:

@@ -4,13 +4,9 @@
 SPLM Normalizer
 ==================
 
-Stable Protein Log-Mean Normalization.
+Stable Protein Log-Mean Normalization (SPLM) identifies a subset of proteins (features) that are stably expressed across samples based on their low variability in log-transformed space. It then uses the mean log-intensity of these stable proteins to derive scaling factors, normalizing all samples accordingly.
 
-This method normalizes proteomics data by identifying a subset of proteins
-(features) deemed 'stable' based on their low variability across samples
-in log-transformed space. The normalization then adjusts sample intensities
-so that the average log-intensity of these stable proteins is consistent
-across all samples.
+SPLM normalization is ideal when you expect a subset of proteins to remain constant across conditions, allowing you to correct for technical variation using only these stable features.
 
 The core steps are:
 

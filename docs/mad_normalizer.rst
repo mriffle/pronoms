@@ -6,8 +6,9 @@ MAD Normalizer
 
 Median Absolute Deviation (MAD) Normalization.
 
-This method standardizes each sample (row) based on its median and Median Absolute Deviation (MAD).
-It's a robust method for scaling data, less sensitive to outliers than standard deviation.
+The MADNormalizer is a robust scaling method that centers each sample by subtracting its median and scales by the Median Absolute Deviation (MAD). This approach reduces the influence of outliers and non-normal distributions, providing a more reliable normalization than standard deviation-based methods.
+
+Choose MAD normalization when your data may contain outliers or you need a robust alternative to traditional scaling techniques.
 
 The normalization formula for a sample `x` is:
 

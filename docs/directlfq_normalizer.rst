@@ -1,6 +1,10 @@
 DirectLFQ Normalizer
 =====================
 
+The DirectLFQNormalizer implements the DirectLFQ algorithm for protein quantification from peptide or ion-level intensity data. This method directly infers protein abundances by modeling the relationship between peptides and their parent proteins, enabling accurate label-free quantification across many samples. DirectLFQ is designed to handle missing values and large-scale datasets efficiently, providing robust normalization and quantification without the biases of summary-based approaches.
+
+Use DirectLFQNormalizer when you need scalable, accurate protein quantification from bottom-up proteomics data, especially in studies with many samples or complex experimental designs.
+
 .. automodule:: pronoms.normalizers.directlfq_normalizer
 
 .. autoclass:: pronoms.normalizers.directlfq_normalizer.DirectLFQNormalizer

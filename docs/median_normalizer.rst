@@ -1,7 +1,9 @@
 MedianNormalizer
 ================
 
-The `MedianNormalizer` scales each sample by its median value.
+The `MedianNormalizer` scales each sample by its median value, then rescales all samples by the mean of medians to preserve overall scale. This simple normalization method corrects for systematic differences in sample loading or labeling, assuming most proteins are not changing between samples.
+
+Use MedianNormalizer when you want to adjust for global intensity differences across samples in proteomics or other high-throughput data.
 
 .. automodule:: pronoms.normalizers.median_normalizer
     :members:

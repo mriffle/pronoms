@@ -6,9 +6,9 @@ Median Polish Normalizer
 
 Tukey's Median Polish Normalization.
 
-This method applies Tukey's Median Polish algorithm, typically to log-transformed
-data, to decompose a matrix into overall, row, column, and residual effects.
-It iteratively removes the median from rows and then columns until convergence.
+The MedianPolishNormalizer uses Tukey's Median Polish algorithm to iteratively remove row and column medians from a (typically log-transformed) data matrix. This decomposes the data into overall, row, column, and residual effects, helping to remove systematic biases from both samples and features.
+
+Median Polish normalization is especially useful when both row (sample) and column (feature) effects are present, and you want to analyze the residual structure or correct for multiple sources of bias.
 
 The `normalize` method returns the `overall_median + residuals`.
 **Important:** If `log_transform=True` was used during initialization, the

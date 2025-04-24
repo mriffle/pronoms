@@ -1,7 +1,9 @@
 QuantileNormalizer
 ==================
 
-The `QuantileNormalizer` applies quantile normalization across samples.
+The `QuantileNormalizer` applies quantile normalization to make the empirical distributions of all samples identical. This is achieved by sorting each sample, averaging across samples at each rank, and assigning these average values back to the original data.
+
+Use quantile normalization when you want to directly compare samples by ensuring they have the same distribution, such as in large-scale studies or when integrating data from multiple batches.
 
 .. automodule:: pronoms.normalizers.quantile_normalizer
     :members:

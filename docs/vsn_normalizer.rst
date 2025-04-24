@@ -1,8 +1,9 @@
 VSNNormalizer
 =============
 
-The `VSNNormalizer` implements Variance Stabilizing Normalization using the R vsn package (Bioconductor).
-Requires R and the `vsn` package installed.
+The `VSNNormalizer` performs Variance Stabilizing Normalization (VSN) using the R `vsn` package from Bioconductor. This method applies a transformation to the data that stabilizes the variance across the full range of intensities, making downstream statistical analyses more reliable and robust to intensity-dependent noise.
+
+VSN normalization is particularly valuable for high-throughput proteomics or microarray data, where variance often increases with signal intensity. Use it when you need to remove intensity-dependent variance and improve comparability across samples. Requires R and the `vsn` package installed.
 
 .. automodule:: pronoms.normalizers.vsn_normalizer
     :members:
