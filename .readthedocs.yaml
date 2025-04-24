@@ -12,6 +12,7 @@ build:
   apt_packages:
     - r-base
     - r-base-dev
+    - libtirpc-dev
 
 # Build documentation in the "docs/" directory with Sphinx
 sphinx:
