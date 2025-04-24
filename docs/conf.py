@@ -16,4 +16,6 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = []
 
+# Set the documentation logo
+html_logo = '_static/logo.png'
 html_theme = 'renku'
