@@ -5,6 +5,15 @@ Pronoms is a Python library providing a suite of normalization methods for quant
 
 Use Pronoms if you need robust, reproducible normalization of proteomics data for downstream statistical analysis, biomarker discovery, or comparative proteomics studies.
 
+Installation
+------------
+
+You can install Pronoms directly from PyPI using pip:
+
+.. code-block:: bash
+
+   pip install pronoms
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

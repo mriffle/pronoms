@@ -4,9 +4,11 @@ Usage
 Installation
 ------------
 
+You can install Pronoms directly from PyPI using pip:
+
 .. code-block:: bash
 
-    pip install .
+   pip install pronoms
 
 Basic Usage
 -----------

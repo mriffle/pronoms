@@ -5,16 +5,17 @@ Pronoms is a Python library implementing multiple normalization methods for quan
 
 ## Installation
 
+You can install Pronoms directly from PyPI using pip:
+
+```bash
+pip install pronoms
+```
+
 ### Prerequisites
 - Python 3.9 or higher
 - For R-based normalizers (VSN):
   - R installed on your system
   - Required R packages: `vsn`
-
-### Installing from PyPI
-```bash
-pip install pronoms
-```
 
 ### Installing for Development
 ```bash
