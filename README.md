@@ -3,6 +3,9 @@
 ## Overview
 Pronoms is a Python library implementing multiple normalization methods for quantitative proteomics data. Each normalization method is encapsulated within modular, reusable classes. The library includes visualization capabilities that allow users to easily observe the effects of normalization. Some normalization methods, such as VSN normalization, leverage R on the backend for computation.
 
+## Documentation
+See https://pronoms.readthedocs.io/ for complete documentation.
+
 ## Installation
 
 You can install Pronoms directly from PyPI using pip:
