@@ -88,7 +88,8 @@ class MedianNormalizer:
     
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
                        figsize: Tuple[int, int] = (10, 8),
-                       title: str = "Median Normalization Comparison") -> plt.Figure:
+                       title: str = "Median Normalization Comparison",
+                       log_axes: bool = True) -> plt.Figure:
         """
         Plot data before vs after normalization using a 2D hexbin density plot.
         
@@ -102,6 +103,8 @@ class MedianNormalizer:
             Figure size, by default (10, 8).
         title : str, optional
             Plot title, by default "Median Normalization Comparison".
+        log_axes : bool, optional
+            If True (default), plot log10 of the values on both axes. If False, plot raw values.
         
         Returns
         -------
@@ -119,7 +122,8 @@ class MedianNormalizer:
             figsize=figsize,
             title=title,
             xlabel="Before Median Normalization",
-            ylabel="After Median Normalization"
+            ylabel="After Median Normalization",
+            log_axes=log_axes
         )
         
         return fig

@@ -21,7 +21,8 @@ def create_hexbin_comparison(
     add_identity_line: bool = True,
     transform_original: Optional[str] = None,
     autoscale_y: bool = False,
-    add_center_line_y0: bool = False
+    add_center_line_y0: bool = False,
+    log_axes: bool = True
 ) -> plt.Figure:
     """
     Create a 2D hexbin density plot comparing values before and after normalization.
@@ -56,7 +57,9 @@ def create_hexbin_comparison(
     add_center_line_y0 : bool, optional
         If True, add a horizontal reference line at y=0. Overrides `add_identity_line`.
         By default False.
-        
+    log_axes : bool, optional
+        If True (default), plot log10 of the values on both axes (with +1 for safety). If False, plot raw values.
+    
     Returns
     -------
     plt.Figure
@@ -75,9 +78,20 @@ def create_hexbin_comparison(
     x = before_data.flatten()
     y = after_data.flatten()
 
-    # Apply transformation to 'before' data if specified
+    # Apply log10 transformation to both axes if requested
     x_label = xlabel
-    if transform_original == 'log2':
+    y_label = ylabel
+    if log_axes:
+        # Add 1 before log10 to handle zeros
+        with np.errstate(divide='ignore', invalid='ignore'):
+            x_log = np.log10(x + 1)
+            y_log = np.log10(y + 1)
+        valid_indices = np.isfinite(x_log) & np.isfinite(y_log)
+        x = x_log[valid_indices]
+        y = y_log[valid_indices]
+        x_label = f'Log10({xlabel} + 1)'
+        y_label = f'Log10({ylabel} + 1)'
+    elif transform_original == 'log2':
         # Add 1 before log2 to handle zeros, filter out resulting NaNs/Infs if any
         # Use np.errstate to suppress warnings about invalid values (handled by filtering)
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -117,7 +131,7 @@ def create_hexbin_comparison(
     
     # Set labels and title
     ax.set_xlabel(x_label)
-    ax.set_ylabel(ylabel)
+    ax.set_ylabel(y_label)
     ax.set_title(title)
     
     # Set aspect ratio only if y-axis autoscaling is not requested
