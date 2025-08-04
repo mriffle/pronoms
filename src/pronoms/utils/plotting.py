@@ -22,7 +22,9 @@ def create_hexbin_comparison(
     transform_original: Optional[str] = None,
     autoscale_y: bool = False,
     add_center_line_y0: bool = False,
-    log_axes: bool = True
+    log_axes: bool = True,
+    xlim: Optional[Tuple[float, float]] = None,
+    ylim: Optional[Tuple[float, float]] = None
 ) -> plt.Figure:
     """
     Create a 2D hexbin density plot comparing values before and after normalization.
@@ -59,6 +61,10 @@ def create_hexbin_comparison(
         By default False.
     log_axes : bool, optional
         If True (default), plot log10 of the values on both axes (with +1 for safety). If False, plot raw values.
+    xlim : Optional[Tuple[float, float]], optional
+        Custom limits for the x-axis, by default None.
+    ylim : Optional[Tuple[float, float]], optional
+        Custom limits for the y-axis, by default None.
     
     Returns
     -------
@@ -134,6 +140,12 @@ def create_hexbin_comparison(
     ax.set_ylabel(y_label)
     ax.set_title(title)
     
+    # Set custom axis limits if provided
+    if xlim is not None:
+        ax.set_xlim(xlim)
+    if ylim is not None:
+        ax.set_ylim(ylim)
+
     # Set aspect ratio only if y-axis autoscaling is not requested
     if not autoscale_y:
         ax.set_aspect('equal', adjustable='box')

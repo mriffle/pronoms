@@ -13,6 +13,7 @@ from .mad_normalizer import MADNormalizer
 from .splm_normalizer import SPLMNormalizer
 from .vsn_normalizer import VSNNormalizer
 from .directlfq_normalizer import DirectLFQNormalizer
+from .rank_normalizer import RankNormalizer
 
 __all__ = [
     "MedianNormalizer",
@@ -22,7 +23,8 @@ __all__ = [
     "MedianPolishNormalizer",
     "SPLMNormalizer",
     "VSNNormalizer",
-    "DirectLFQNormalizer"
+    "DirectLFQNormalizer",
+    "RankNormalizer"
 ]
 
 # Lazy-load VSNNormalizer to avoid rpy2 import on package import
@@ -35,6 +37,7 @@ _lazy_imports = {
     "MedianPolishNormalizer": ".median_polish_normalizer",
     "MADNormalizer": ".mad_normalizer",
     "DirectLFQNormalizer": ".directlfq_normalizer",
+    "RankNormalizer": ".rank_normalizer",
 }
 
 def __getattr__(name):

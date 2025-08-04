@@ -25,6 +25,7 @@ You can install Pronoms directly from PyPI using pip:
    median_normalizer
    median_polish_normalizer
    quantile_normalizer
+   rank_normalizer
    splm_normalizer
    vsn_normalizer
 

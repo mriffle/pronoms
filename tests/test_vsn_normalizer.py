@@ -226,7 +226,8 @@ class TestVSNNormalizer:
             title="VSN Normalization Comparison (glog2 vs log2)",
             gridsize=50,
             cmap='viridis',
-            transform_original='log2'
+            transform_original='log2',
+            log_axes=False
         )
         
         # Check that the result is the mocked figure
