@@ -1,73 +1,145 @@
-.. _splm_normalizer:
+SPLMNormalizer
+==============
 
-==================
-SPLM Normalizer
-==================
+The ``SPLMNormalizer`` implements Stable Protein Log-Mean Normalization (SPLM), which identifies a subset of stably expressed proteins based on their low variability in log-space and uses them as internal standards for normalization. This method is particularly effective when a subset of proteins can be assumed to remain constant across experimental conditions.
 
-Stable Protein Log-Mean Normalization (SPLM) identifies a subset of proteins (features) that are stably expressed across samples based on their low variability in log-transformed space. It then uses the mean log-intensity of these stable proteins to derive scaling factors, normalizing all samples accordingly.
+Overview
+--------
 
-SPLM normalization is ideal when you expect a subset of proteins to remain constant across conditions, allowing you to correct for technical variation using only these stable features.
+SPLM normalization addresses the challenge of selecting appropriate reference features for normalization in proteomics data. Rather than assuming all proteins are equally suitable as references, SPLM:
 
-The core steps are:
+1. **Identifies stable proteins**: Selects features with the lowest coefficient of variation in log-space
+2. **Uses stable proteins as references**: Calculates scaling factors based only on these stable features
+3. **Normalizes all features**: Applies the scaling factors derived from stable proteins to the entire dataset
 
-1.  **Log Transformation**: The input intensity matrix `X` is log-transformed
-    using `log(X + epsilon)`, where `epsilon` is a small constant to avoid
-    issues with zero or negative intensities.
-2.  **Calculate Log-CV**: The coefficient of variation (CV = standard deviation / mean)
-    is calculated for each protein (feature) across all samples using the
-    log-transformed data.
-3.  **Identify Stable Proteins**: Proteins are ranked by their log-CV. The
-    `num_stable_proteins` with the *lowest* log-CV are selected as the stable
-    reference set.
-4.  **Calculate Log Scaling Factors**: For each sample, a log-scaling factor is
-    calculated as the mean log-intensity of only the stable proteins identified
-    in the previous step.
-5.  **Calculate Grand Mean**: The overall mean of these sample-specific
-    log-scaling factors is computed (the grand mean log scaling factor).
-6.  **Normalize in Log Space**: Each sample's log-intensities are adjusted by
-    subtracting its specific log-scaling factor and adding the grand mean log
-    scaling factor.
-7.  **Back-transform**: The adjusted log-intensities are transformed back to the
-    original intensity scale using the exponential function `exp(adjusted_log_X) - epsilon`.
+This approach is particularly powerful when:
 
-This process effectively centers the distribution of stable protein intensities
-across samples while preserving the overall intensity profile.
+- A subset of proteins are expected to be housekeeping or constitutively expressed
+- Technical variation affects all proteins proportionally
+- You want to avoid bias from highly variable proteins in normalization
+- Working with targeted proteomics where reference proteins can be identified
+
+Key Features
+------------
+
+- **Automatic stable protein selection**: Identifies the most stable features based on log-space variability
+- **Reference-based normalization**: Uses only stable proteins for scaling factor calculation
+- **Log-space processing**: Handles multiplicative effects through log transformation
+- **Robust to variable proteins**: Normalization is not affected by highly variable features
+- **Preserves biological variation**: Maintains true biological differences while removing technical bias
+
+Algorithm Details
+-----------------
+
+The SPLM algorithm works through the following steps:
+
+1. **Log transformation**: X_log = log(X + ε) where ε prevents log(0)
+2. **Calculate log-CV**: For each protein j, CV_j = std(X_log[:, j]) / mean(X_log[:, j])
+3. **Select stable proteins**: Choose the `num_stable_proteins` with lowest CV
+4. **Calculate scaling factors**: For each sample i, factor_i = mean(X_log[i, stable_proteins])
+5. **Calculate grand mean**: grand_mean = mean(all scaling factors)
+6. **Normalize in log-space**: X_norm_log[i, j] = X_log[i, j] - factor_i + grand_mean
+7. **Back-transform**: X_normalized = exp(X_norm_log) - ε
+
+**Mathematical representation**:
+
+.. math::
+
+   \text{CV}_j = \frac{\sigma(\log(X_{:,j} + \epsilon))}{\mu(\log(X_{:,j} + \epsilon))}
+
+.. math::
+
+   \text{factor}_i = \frac{1}{k} \sum_{j \in \text{stable}} \log(X_{i,j} + \epsilon)
+
+where k is the number of stable proteins.
+
+Parameters
+----------
+
+.. autoclass:: pronoms.normalizers.SPLMNormalizer
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Usage Example
 -------------
 
+Basic SPLM normalization:
+
 .. code-block:: python
 
-    import numpy as np
-    from pronoms.normalizers import SPLMNormalizer
+   import numpy as np
+   from pronoms.normalizers import SPLMNormalizer
+   
+   # Create sample data with stable and variable proteins
+   np.random.seed(42)
+   
+   # Stable proteins (low variability)
+   stable_proteins = np.array([
+       [100, 200, 150],  # Sample 1
+       [105, 210, 155],  # Sample 2
+       [95, 190, 145]    # Sample 3
+   ])
+   
+   # Variable proteins (high variability)
+   variable_proteins = np.array([
+       [50, 1000],   # Sample 1
+       [150, 500],   # Sample 2
+       [25, 2000]    # Sample 3
+   ])
+   
+   # Combine stable and variable proteins
+   data = np.hstack([stable_proteins, variable_proteins])
+   
+   # Create and apply normalizer
+   # Use 3 stable proteins (should select the first 3 columns)
+   normalizer = SPLMNormalizer(num_stable_proteins=3, epsilon=1.0)
+   normalized_data = normalizer.normalize(data)
+   
+   print("Original data:")
+   print(data)
+   print("\nNormalized data:")
+   print(normalized_data)
+   
+   # Examine which proteins were selected as stable
+   print(f"\nStable protein indices: {normalizer.stable_feature_indices_}")
+   print(f"Log-CVs of all proteins: {normalizer.log_cvs_}")
+   print(f"Scaling factors: {normalizer.log_scaling_factors_}")
 
-    # Example data (3 samples, 5 features/proteins)
-    # Some proteins are more variable than others
-    data = np.array([
-        [100, 1000, 50, 500, 200],  # Stable: F1, F3. Variable: F2, F4, F5
-        [110, 1500, 55, 600, 210],  # Stable: F1, F3. Variable: F2, F4, F5
-        [ 90, 800, 45, 400, 190]   # Stable: F1, F3. Variable: F2, F4, F5
-    ])
+Visualization:
 
-    # Initialize the normalizer
-    # Identify top 2 most stable proteins (lowest log-CV)
-    normalizer = SPLMNormalizer(num_stable_proteins=2)
+.. code-block:: python
 
-    # Normalize the data
-    normalized_data = normalizer.normalize(data)
+   # Visualize the normalization effect
+   fig = normalizer.plot_comparison(data, normalized_data)
+   fig.show()
 
-    print("Original Data:\n", data)
-    print("\nSPLM Normalized Data:\n", normalized_data)
+When to Use
+-----------
 
-    # You can inspect the identified stable features and scaling factors
-    # print("\nIndices of Stable Features:", normalizer.stable_feature_indices_)
-    # print("Log Scaling Factors:", normalizer.log_scaling_factors_)
-    # print("Grand Mean Log Scaling Factor:", normalizer.grand_mean_log_scaling_factor_)
+SPLMNormalizer is particularly useful when:
 
-Class Documentation
--------------------
+- **Housekeeping proteins present**: Dataset contains proteins expected to be stably expressed
+- **Targeted proteomics**: Working with a curated set of proteins where some serve as references
+- **Technical variation dominant**: When most variation is technical rather than biological
+- **Reference protein selection**: When you want data-driven selection of reference features
+- **Proportional scaling needed**: When technical effects scale all proteins proportionally
 
-.. automodule:: pronoms.normalizers.splm_normalizer
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Considerations
+--------------
+
+- **Stable protein assumption**: Requires that some proteins are truly stable across conditions
+- **Number of stable proteins**: Choice of `num_stable_proteins` can significantly affect results
+- **Log-space processing**: Assumes multiplicative rather than additive effects
+- **Minimum protein requirement**: Needs sufficient proteins to reliably identify stable ones
+- **Biological interpretation**: May remove true biological signal if stable proteins are misidentified
+
+See Also
+--------
+
+- :doc:`median_normalizer`: For simple scaling-based normalization
+- :doc:`quantile_normalizer`: For making distributions identical across samples
+- :doc:`mad_normalizer`: For robust normalization using median absolute deviation
+- :doc:`vsn_normalizer`: For variance-stabilizing normalization
+
+
