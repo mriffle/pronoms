@@ -226,5 +226,6 @@ class VSNNormalizer:
             figsize=figsize,
             gridsize=gridsize,
             cmap=cmap,
-            transform_original='log2'
+            transform_original='log2',
+            log_axes=False
         )
