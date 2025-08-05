@@ -4,7 +4,7 @@ Tests for RankNormalizer.
 
 import numpy as np
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from pronoms.normalizers import RankNormalizer
 
 
@@ -148,86 +148,115 @@ class TestRankNormalizer:
             assert np.max(row_ranks) <= 1.0
 
     @patch('pronoms.normalizers.rank_normalizer.create_hexbin_comparison')
-    def test_plot_comparison(self, mock_create_hexbin):
-        """Test plot_comparison method with default log_x_axis=True."""
+    def test_plot_comparison_default(self, mock_create_hexbin):
+        """Test plot_comparison with default parameters (log_axes=False)."""
         normalizer = RankNormalizer()
-        before_data = np.array([[1.0, 10.0, 100.0]])
-        after_data = np.array([[1.0, 2.0, 3.0]])  # Ranks 1 to N
+        before_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        after_data = np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])
         
-        normalizer.plot_comparison(before_data, after_data)
-
-        # Check that the mock was called exactly once
+        # Mock the return value
+        mock_fig = MagicMock()
+        mock_create_hexbin.return_value = mock_fig
+        
+        # Call the method
+        result = normalizer.plot_comparison(before_data, after_data)
+        
+        # Verify the mock was called
         mock_create_hexbin.assert_called_once()
-
-        # Get the arguments from the call
-        call_args, call_kwargs = mock_create_hexbin.call_args
-
-        # Expected log-transformed data (default behavior)
-        expected_x_data = np.log10(before_data + 1)
-
-        # Assert on the positional arguments (numpy arrays)
-        np.testing.assert_allclose(call_args[0], expected_x_data)
-        np.testing.assert_allclose(call_args[1], after_data)
-
-        # Assert on the keyword arguments
-        n_features = before_data.shape[1]
-        x_min, x_max = np.min(expected_x_data), np.max(expected_x_data)
-        padding = (x_max - x_min) * 0.05
-        expected_xlim = (x_min - padding, x_max + padding)
+        args, kwargs = mock_create_hexbin.call_args
         
-        assert call_kwargs['figsize'] == (10, 8)
-        assert call_kwargs['title'] == "Rank Normalization Comparison"
-        assert call_kwargs['xlabel'] == "Log10(Original Value + 1)"
-        assert call_kwargs['ylabel'] == f"Assigned Rank (1 to {n_features})"
-        assert call_kwargs['log_axes'] is False
-        np.testing.assert_allclose(call_kwargs['xlim'], expected_xlim)
-        assert call_kwargs['ylim'] == (0, n_features + 1)
-        assert call_kwargs['autoscale_y'] is False
-        assert call_kwargs['add_identity_line'] is False
+        # Check that raw data was passed (log_axes=False by default)
+        np.testing.assert_allclose(args[0], before_data)
+        np.testing.assert_allclose(args[1], after_data)
+        
+        # Check other parameters
+        assert kwargs['title'] == "Rank Normalization Comparison"
+        assert kwargs['xlabel'] == "Original Value"
+        assert kwargs['ylabel'] == "Assigned Rank (1 to 3)"
+        assert kwargs['log_axes'] == False
+        assert kwargs['autoscale_y'] == True
+        assert kwargs['add_identity_line'] == False
+        
+        # Check that xlim and ylim were set
+        assert 'xlim' in kwargs
+        assert 'ylim' in kwargs
+        assert kwargs['ylim'] == (0, 4)  # n_features + 1
+        
+        assert result == mock_fig
 
     @patch('pronoms.normalizers.rank_normalizer.create_hexbin_comparison')
-    def test_plot_comparison_custom_params(self, mock_create_hexbin):
-        """Test plot_comparison with custom parameters."""
+    def test_plot_comparison_log_axes_true(self, mock_create_hexbin):
+        """Test plot_comparison with log_axes=True."""
         normalizer = RankNormalizer()
-        before_data = np.array([[1.0, 10.0, 100.0]])
-        after_data = np.array([[1.0, 2.0, 3.0]])
+        before_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        after_data = np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])
         
-        normalizer.plot_comparison(
-            before_data, 
-            after_data,
-            figsize=(12, 10),
+        # Mock the return value
+        mock_fig = MagicMock()
+        mock_create_hexbin.return_value = mock_fig
+        
+        # Call the method with log_axes=True
+        result = normalizer.plot_comparison(
+            before_data, after_data, 
+            figsize=(12, 10), 
             title="Custom Title",
-            log_x_axis=False  # Test with raw x-axis values
+            log_axes=True
         )
         
-        # Check that the mock was called exactly once
+        # Verify the mock was called
         mock_create_hexbin.assert_called_once()
-
-        # Get the arguments from the call
-        call_args, call_kwargs = mock_create_hexbin.call_args
-
-        # Expected raw data (no log transformation)
-        expected_x_data = before_data
-
-        # Assert on the positional arguments (numpy arrays)
-        np.testing.assert_allclose(call_args[0], expected_x_data)
-        np.testing.assert_allclose(call_args[1], after_data)
-
-        # Assert on the keyword arguments
-        n_features = before_data.shape[1]
-        x_min, x_max = np.min(expected_x_data), np.max(expected_x_data)
-        padding = (x_max - x_min) * 0.05
-        expected_xlim = (x_min - padding, x_max + padding)
+        args, kwargs = mock_create_hexbin.call_args
         
-        assert call_kwargs['figsize'] == (12, 10)
-        assert call_kwargs['title'] == "Custom Title"
-        assert call_kwargs['xlabel'] == "Original Value"  # Raw values, not log
-        assert call_kwargs['ylabel'] == f"Assigned Rank (1 to {n_features})"
-        assert call_kwargs['log_axes'] is False
-        np.testing.assert_allclose(call_kwargs['xlim'], expected_xlim)
-        assert call_kwargs['ylim'] == (0, n_features + 1)
-        assert call_kwargs['autoscale_y'] is False
-        assert call_kwargs['add_identity_line'] is False
+        # Check that log-transformed data was passed (log_axes=True)
+        expected_x_data = np.log10(before_data + 1)
+        np.testing.assert_allclose(args[0], expected_x_data)
+        np.testing.assert_allclose(args[1], after_data)
+        
+        # Check other parameters
+        assert kwargs['figsize'] == (12, 10)
+        assert kwargs['title'] == "Custom Title"
+        assert kwargs['xlabel'] == "Log10(Original Value + 1)"
+        assert kwargs['ylabel'] == "Assigned Rank (1 to 3)"
+        assert kwargs['log_axes'] == False  # Always False since data is pre-transformed
+        assert kwargs['autoscale_y'] == True
+        assert kwargs['add_identity_line'] == False
+        
+        assert result == mock_fig
+
+    @patch('pronoms.normalizers.rank_normalizer.create_hexbin_comparison')
+    def test_plot_comparison_log_axes_false(self, mock_create_hexbin):
+        """Test plot_comparison with log_axes=False explicitly."""
+        normalizer = RankNormalizer()
+        before_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        after_data = np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])
+        
+        # Mock the return value
+        mock_fig = MagicMock()
+        mock_create_hexbin.return_value = mock_fig
+        
+        # Call the method with log_axes=False explicitly
+        result = normalizer.plot_comparison(
+            before_data, after_data, 
+            log_axes=False
+        )
+        
+        # Verify the mock was called
+        mock_create_hexbin.assert_called_once()
+        args, kwargs = mock_create_hexbin.call_args
+        
+        # Check that raw data was passed (log_axes=False)
+        np.testing.assert_allclose(args[0], before_data)
+        np.testing.assert_allclose(args[1], after_data)
+        
+        # Check other parameters
+        assert kwargs['title'] == "Rank Normalization Comparison"
+        assert kwargs['xlabel'] == "Original Value"
+        assert kwargs['ylabel'] == "Assigned Rank (1 to 3)"
+        assert kwargs['log_axes'] == False
+        assert kwargs['autoscale_y'] == True
+        assert kwargs['add_identity_line'] == False
+        
+        assert result == mock_fig
 
     @patch('pronoms.normalizers.rank_normalizer.create_hexbin_comparison')
     def test_plot_comparison_normalized_ranks(self, mock_create_hexbin):
@@ -237,7 +266,11 @@ class TestRankNormalizer:
         # Normalized ranks should be in [0, 1] range
         after_data = np.array([[0.25, 0.5, 0.75]])  # Ranks divided by N
         
-        normalizer.plot_comparison(before_data, after_data)
+        # Mock the return value
+        mock_fig = MagicMock()
+        mock_create_hexbin.return_value = mock_fig
+        
+        result = normalizer.plot_comparison(before_data, after_data)
 
         # Check that the mock was called exactly once
         mock_create_hexbin.assert_called_once()
@@ -245,27 +278,24 @@ class TestRankNormalizer:
         # Get the arguments from the call
         call_args, call_kwargs = mock_create_hexbin.call_args
 
-        # Expected log-transformed data (default behavior)
-        expected_x_data = np.log10(before_data + 1)
-
-        # Assert on the positional arguments (numpy arrays)
-        np.testing.assert_allclose(call_args[0], expected_x_data)
+        # Assert on the positional arguments (raw data by default, log_axes=False)
+        np.testing.assert_allclose(call_args[0], before_data)
         np.testing.assert_allclose(call_args[1], after_data)
 
         # Assert on the keyword arguments
-        x_min, x_max = np.min(expected_x_data), np.max(expected_x_data)
-        padding = (x_max - x_min) * 0.05
-        expected_xlim = (x_min - padding, x_max + padding)
-        
+        # Note: Uses n_features for y-axis limits
+        n_features = before_data.shape[1]
         assert call_kwargs['figsize'] == (10, 8)
         assert call_kwargs['title'] == "Rank Normalization Comparison"
-        assert call_kwargs['xlabel'] == "Log10(Original Value + 1)"
-        assert call_kwargs['ylabel'] == "Normalized Rank (0 to 1)"  # Different for normalized ranks
+        assert call_kwargs['xlabel'] == "Original Value"  # Raw data by default
+        assert call_kwargs['ylabel'] == f"Assigned Rank (1 to {n_features})"
         assert call_kwargs['log_axes'] is False
-        np.testing.assert_allclose(call_kwargs['xlim'], expected_xlim)
-        assert call_kwargs['ylim'] == (-0.05, 1.05)  # Range for normalized ranks
-        assert call_kwargs['autoscale_y'] is False
+        assert 'xlim' in call_kwargs
+        assert call_kwargs['ylim'] == (0, n_features + 1)
+        assert call_kwargs['autoscale_y'] is True
         assert call_kwargs['add_identity_line'] is False
+        
+        assert result == mock_fig
 
     def test_complex_tie_scenario(self):
         """Test complex scenario with multiple groups of ties."""

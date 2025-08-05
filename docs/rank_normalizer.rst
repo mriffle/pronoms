@@ -90,13 +90,16 @@ Visualization:
 .. code-block:: python
 
     # Visualize the transformation effect
-    # By default, x-axis is log-transformed for better visualization
+    # By default, x-axis shows raw values (log_axes=False)
     fig = normalizer.plot_comparison(data, normalized_data)
     fig.show()
     
-    # Or use raw values on x-axis
-    fig = normalizer.plot_comparison(data, normalized_data, log_x_axis=False)
+    # For data with wide dynamic ranges, use log-transformed x-axis
+    fig = normalizer.plot_comparison(data, normalized_data, log_axes=True)
     fig.show()
+    
+    # The y-axis always shows the actual rank values from normalization
+    # log_axes only affects the x-axis (original values) transformation
 
 When to Use
 -----------
