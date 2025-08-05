@@ -89,9 +89,14 @@ Visualization:
 
 .. code-block:: python
 
-   # Visualize the transformation effect
-   fig = normalizer.plot_comparison(data, normalized_data)
-   fig.show()
+    # Visualize the transformation effect
+    # By default, x-axis is log-transformed for better visualization
+    fig = normalizer.plot_comparison(data, normalized_data)
+    fig.show()
+    
+    # Or use raw values on x-axis
+    fig = normalizer.plot_comparison(data, normalized_data, log_x_axis=False)
+    fig.show()
 
 When to Use
 -----------

@@ -102,7 +102,7 @@ class RankNormalizer:
     def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
                        figsize: Tuple[int, int] = (10, 8),
                        title: str = "Rank Normalization Comparison",
-                       log_axes: bool = False) -> plt.Figure:
+                       log_x_axis: bool = True) -> plt.Figure:
         """
         Plot data before vs after normalization using a 2D hexbin density plot.
         
@@ -116,10 +116,10 @@ class RankNormalizer:
             Figure size, by default (10, 8).
         title : str, optional
             Plot title, by default "Rank Normalization Comparison".
-        log_axes : bool, optional
-            If True, plot log10 of the values on both axes. If False (default), 
-            plot raw values. For rank normalization, log scaling is typically
-            not needed since ranks are already in a bounded range.
+        log_x_axis : bool, optional
+            If True (default), plot log10 of the original values on the x-axis. 
+            If False, plot raw original values. The y-axis always shows the 
+            actual rank values from the normalization.
         
         Returns
         -------
@@ -130,33 +130,49 @@ class RankNormalizer:
         before_data = validate_input_data(before_data)
         after_data = validate_input_data(after_data)
 
-        # Log-transform the original data for the x-axis
-        # Add 1 to handle zero values before taking the log
-        with np.errstate(divide='ignore', invalid='ignore'):
-            x_data = np.log10(before_data + 1)
+        # Prepare x-axis data based on log_x_axis parameter
+        if log_x_axis:
+            # Log-transform the original data for the x-axis
+            with np.errstate(divide='ignore', invalid='ignore'):
+                x_data = np.log10(before_data + 1)
+            xlabel = "Log10(Original Value + 1)"
+            
+            # Find min/max of log-transformed data for x-axis range
+            x_min, x_max = np.min(x_data[np.isfinite(x_data)]), np.max(x_data[np.isfinite(x_data)])
+        else:
+            # Use raw original data for x-axis
+            x_data = before_data
+            xlabel = "Original Value"
+            
+            # Find min/max of original data for x-axis range
+            x_min, x_max = np.min(x_data), np.max(x_data)
         
-        # Get the number of features (N) for setting y-axis limits
-        n_features = before_data.shape[1]
-
-        # Set custom axis limits and labels for rank normalization
-        # Y-axis shows ranks from 1 to N
-        ylim = (0, n_features + 1)
-        
-        # Find min/max of log-transformed data for a sensible x-axis range
-        x_min, x_max = np.min(x_data[np.isfinite(x_data)]), np.max(x_data[np.isfinite(x_data)])
+        # Add padding to x-axis range
         padding = (x_max - x_min) * 0.05  # 5% padding
         xlim = (x_min - padding, x_max + padding)
+        
+        # Set y-axis limits based on the actual range of normalized data
+        # Check if normalize_by_n was used by examining the data range
+        y_min, y_max = np.min(after_data), np.max(after_data)
+        
+        if y_max <= 1.0:  # normalize_by_n=True case
+            ylim = (-0.05, 1.05)  # Small padding around [0, 1]
+            ylabel = "Normalized Rank (0 to 1)"
+        else:  # normalize_by_n=False case (ranks from 1 to N)
+            n_features = before_data.shape[1]
+            ylim = (0, n_features + 1)
+            ylabel = f"Assigned Rank (1 to {n_features})"
 
         return create_hexbin_comparison(
-            x_data,  # Use log-transformed data for x-axis
+            x_data,
             after_data,
             figsize=figsize,
             title=title,
-            xlabel="Log10(Original Value + 1)",
-            ylabel=f"Assigned Rank (1 to {n_features})",
-            log_axes=False,  # Data is already transformed
+            xlabel=xlabel,
+            ylabel=ylabel,
+            log_axes=False,  # We handle transformations manually
             xlim=xlim,
             ylim=ylim,
-            autoscale_y=True,  # Allow y-axis to use its own scale
-            add_identity_line=False # Identity line is not meaningful here
+            autoscale_y=False,  # Use our custom y-axis limits
+            add_identity_line=False  # Identity line is not meaningful here
         )
