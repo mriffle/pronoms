@@ -5,6 +5,7 @@ This module provides a class for VSN normalization of proteomics data,
 which is implemented using the vsn R package.
 """
 
+import warnings
 from typing import Optional
 
 import matplotlib.pyplot as plt
@@ -40,13 +41,27 @@ class VSNNormalizer:
             Calibration method, by default "affine".
             Options: "affine", "none", "shift", "maximum".
         reference_sample : Optional[int], optional
-            Index of the reference sample to calibrate against, by default None.
-            If None, the vsn package will choose a reference automatically.
+            **Deprecated.** Always treated as ``None`` regardless of value.
+            R-VSN's ``reference`` argument expects a previously fitted ``vsn``
+            object, not a single-sample index, so the parameter as exposed
+            here cannot be implemented faithfully and will be removed in a
+            future major release. Pass ``None`` (the default) to silence the
+            deprecation warning.
         lts_quantile : float, optional
             Quantile for the resistant regression (Linear Threshold Shift), by default 0.75.
             Controls the robustness of the normalization. Must be between 0 and 1.
         """
         self.calib = calib
+        if reference_sample is not None:
+            warnings.warn(
+                "VSNNormalizer's 'reference_sample' parameter is deprecated and will "
+                "be removed in a future major release. R-VSN's 'reference' argument "
+                "expects a fitted vsn object, not a single-sample index, so this "
+                "parameter cannot be implemented faithfully. Calls now ignore the "
+                "value and use vsn2's default reference selection.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.reference_sample = reference_sample
         if not 0 <= lts_quantile <= 1:
             raise ValueError("lts_quantile must be between 0 and 1")
@@ -160,13 +175,9 @@ class VSNNormalizer:
         })
         """
 
-        # Conditionally add reference parameter to vsn2 call
-        vsn2_call_base = f"vsn2(eset, minDataPointsPerStratum = 3, lts.quantile = {self.lts_quantile}"
-        if self.reference_sample is not None:
-            ref_index = self.reference_sample + 1  # R is 1-indexed
-            vsn2_call = f"{vsn2_call_base}, reference = {ref_index})"
-        else:
-            vsn2_call = f"{vsn2_call_base})"  # No reference argument
+        # ``reference_sample`` is deprecated; the script always emits the
+        # default vsn2 call. See __init__ for the rationale.
+        vsn2_call = f"vsn2(eset, minDataPointsPerStratum = 3, lts.quantile = {self.lts_quantile})"
 
         script_end = f"""
         # Run VSN normalization on the ExpressionSet

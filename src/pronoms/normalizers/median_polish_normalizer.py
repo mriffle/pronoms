@@ -23,8 +23,9 @@ class MedianPolishNormalizer:
     max_iterations : int
         Maximum number of iterations allowed for the algorithm.
     tolerance : float
-        Convergence threshold. The algorithm stops if the sum of absolute changes
-        in residuals is less than this value.
+        Convergence threshold on the per-iteration row/column medians removed
+        from the residual matrix. The algorithm stops as soon as
+        ``max(|row_medians|.max(), |col_medians|.max()) <= tolerance``.
     epsilon : float
         Small constant added before log transformation to handle non-positive values.
     log_transform : bool
@@ -59,7 +60,10 @@ class MedianPolishNormalizer:
         max_iterations : int, optional
             Maximum number of iterations, by default 10.
         tolerance : float, optional
-            Convergence tolerance based on sum of absolute changes in residuals, by default 0.01.
+            Convergence tolerance on the row/column medians removed in each
+            iteration. The polish stops when the largest absolute row- or
+            column-median in the current iteration is ``<= tolerance``.
+            By default 0.01.
         epsilon : float, optional
             Small constant added before log transformation (if used), by default 1e-6.
             Only used if `log_transform` is True.
@@ -218,21 +222,30 @@ class MedianPolishNormalizer:
         hb = ax.hexbin(x_filtered, y_filtered, gridsize=50, cmap="viridis", xscale="log")
         fig.colorbar(hb, ax=ax, label="Count in bin")
 
-        # Add diagonal line (transformed appropriately if y is log-scale)
-        # Determine if y is likely log-scale (heuristic: if log_transform was True)
+        # Reference line. The x-axis is ``xscale='log'``, so x-coords are
+        # passed as raw values (matplotlib places them logarithmically on the
+        # axis). y-coords match the y data scale.
+        x_min = float(x_filtered.min())
+        x_max = float(x_filtered.max())
         if self.log_transform:
-            # If y is log, plot log(x) vs y
-            min_val = np.log(x_filtered.min())
-            max_val = np.log(x_filtered.max())
             ax.plot(
-                [min_val, max_val], [min_val, max_val], color="red", linestyle="--", linewidth=1, label="y = log(x)"
+                [x_min, x_max],
+                [np.log(x_min), np.log(x_max)],
+                color="red",
+                linestyle="--",
+                linewidth=1,
+                label="y = log(x)",
             )
             ax.set_ylabel("Normalized Data (Log Scale)")
         else:
-            # If y is original scale, plot x vs y
-            min_val = x_filtered.min()
-            max_val = x_filtered.max()
-            ax.plot([min_val, max_val], [min_val, max_val], color="red", linestyle="--", linewidth=1, label="y = x")
+            ax.plot(
+                [x_min, x_max],
+                [x_min, x_max],
+                color="red",
+                linestyle="--",
+                linewidth=1,
+                label="y = x",
+            )
             ax.set_ylabel("Normalized Data")
 
         ax.set_title("Median Polish Normalization Comparison")

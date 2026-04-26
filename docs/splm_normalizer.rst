@@ -1,14 +1,14 @@
 SPLMNormalizer
 ==============
 
-The ``SPLMNormalizer`` implements Stable Protein Log-Mean Normalization (SPLM), which identifies a subset of stably expressed proteins based on their low variability in log-space and uses them as internal standards for normalization. This method is particularly effective when a subset of proteins can be assumed to remain constant across experimental conditions.
+The ``SPLMNormalizer`` implements Stable Protein Log-Mean Normalization (SPLM), which identifies a subset of stably expressed proteins based on their low coefficient of variation and uses them as internal standards for normalization. This method is particularly effective when a subset of proteins can be assumed to remain constant across experimental conditions.
 
 Overview
 --------
 
 SPLM normalization addresses the challenge of selecting appropriate reference features for normalization in proteomics data. Rather than assuming all proteins are equally suitable as references, SPLM:
 
-1. **Identifies stable proteins**: Selects features with the lowest coefficient of variation in log-space
+1. **Identifies stable proteins**: Selects features with the lowest coefficient of variation (``std/mean``) computed in linear space
 2. **Uses stable proteins as references**: Calculates scaling factors based only on these stable features
 3. **Normalizes all features**: Applies the scaling factors derived from stable proteins to the entire dataset
 
@@ -22,9 +22,9 @@ This approach is particularly powerful when:
 Key Features
 ------------
 
-- **Automatic stable protein selection**: Identifies the most stable features based on log-space variability
+- **Automatic stable protein selection**: Identifies the most stable features by linear-space coefficient of variation
 - **Reference-based normalization**: Uses only stable proteins for scaling factor calculation
-- **Log-space processing**: Handles multiplicative effects through log transformation
+- **Log-space centering**: Removes multiplicative effects through log-transformed centering on stable proteins
 - **Robust to variable proteins**: Normalization is not affected by highly variable features
 - **Preserves biological variation**: Maintains true biological differences while removing technical bias
 
@@ -33,9 +33,9 @@ Algorithm Details
 
 The SPLM algorithm works through the following steps:
 
-1. **Log transformation**: X_log = log(X + ε) where ε prevents log(0)
-2. **Calculate log-CV**: For each protein j, CV_j = std(X_log[:, j]) / mean(X_log[:, j])
-3. **Select stable proteins**: Choose the `num_stable_proteins` with lowest CV
+1. **Calculate per-protein CV in linear space**: For each protein j, CV_j = std(X[:, j]) / mean(X[:, j]). Constant proteins (std=0) get CV=0; proteins with mean=0 are deprioritized as +inf.
+2. **Select stable proteins**: Choose the `num_stable_proteins` with lowest CV
+3. **Log transformation**: X_log = log(X + ε) where ε prevents log(0)
 4. **Calculate scaling factors**: For each sample i, factor_i = mean(X_log[i, stable_proteins])
 5. **Calculate grand mean**: grand_mean = mean(all scaling factors)
 6. **Normalize in log-space**: X_norm_log[i, j] = X_log[i, j] - factor_i + grand_mean
@@ -45,7 +45,7 @@ The SPLM algorithm works through the following steps:
 
 .. math::
 
-   \text{CV}_j = \frac{\sigma(\log(X_{:,j} + \epsilon))}{\mu(\log(X_{:,j} + \epsilon))}
+   \text{CV}_j = \frac{\sigma(X_{:,j})}{\mu(X_{:,j})}
 
 .. math::
 

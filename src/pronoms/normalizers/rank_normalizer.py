@@ -127,6 +127,16 @@ class RankNormalizer:
         -------
         plt.Figure
             Figure object containing the hexbin density plot.
+
+        Notes
+        -----
+        The y-axis limits and label are set assuming integer ranks in
+        ``[1, n_features]`` (the default ``normalize_by_n=False`` case). When
+        the normalizer was constructed with ``normalize_by_n=True`` the
+        plotted y-values are in ``(1/n_features, 1]`` and the y-axis label
+        ("Assigned Rank (1 to N)") and ylim ``(0, n_features+1)`` will not
+        match the data — read the y-tick values rather than the label in that
+        case, or pass the raw integer-rank output through the helper directly.
         """
         # Validate input data
         before_data = validate_input_data(before_data)

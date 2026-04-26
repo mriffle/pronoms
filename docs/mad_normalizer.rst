@@ -17,9 +17,20 @@ The approach works by:
 
 1. **(Optional) Log transform**: By default the data is transformed to ``log2(X + 1)`` before computing statistics. Set ``log_transform=False`` to operate on the raw values.
 2. **Centering**: Subtracting the (log) median from each value
-3. **Scaling**: Dividing by the (log) Median Absolute Deviation (MAD)
+3. **Scaling**: Dividing by ``k * MAD`` where ``k`` is the consistency constant chosen via ``scale_to_sigma`` (``1.4826`` for σ-equivalent output, ``1`` for raw MAD)
 
 This creates standardized samples that are less sensitive to outliers compared to traditional z-score normalization. Working in log-space is the default because it stabilizes variance and matches the typical multiplicative noise structure of mass-spectrometry intensity data.
+
+.. note::
+
+   Pass ``scale_to_sigma=True`` to multiply MAD by the standard 1.4826
+   consistency constant. The output is then a robust z-score (per-row
+   spread ≈ 1 σ for normal data) and matches R's ``mad()`` and
+   ``statsmodels.robust.scale.mad`` by default. The current implicit
+   default (raw MAD divisor) is preserved for backward compatibility but
+   emits a ``DeprecationWarning`` and will flip to ``scale_to_sigma=True``
+   in a future major release. Pass the argument explicitly to lock in the
+   behavior you want.
 
 Key Features
 ------------
@@ -38,19 +49,23 @@ algorithm uses ``Y = log2(X + 1)``; with ``log_transform=False`` it uses ``Y = X
 
 1. **Calculate median**: For each sample i, compute median_i = median(Y[i, :])
 2. **Calculate MAD**: MAD_i = median(|Y[i, :] - median_i|)
-3. **Apply transformation**: X_normalized[i, j] = (Y[i, j] - median_i) / MAD_i
+3. **Apply transformation**: X_normalized[i, j] = (Y[i, j] - median_i) / (k * MAD_i)
+
+The constant ``k`` is ``1.4826`` when ``scale_to_sigma=True`` (the
+σ-consistency constant under normality, ``1 / Φ⁻¹(0.75)``) and ``1`` when
+``scale_to_sigma=False``.
 
 **Mathematical representation** (with ``log_transform=True``, the default):
 
 .. math::
 
-   X_{normalized}[i,j] = \frac{\log_2(X[i,j] + 1) - \text{median}(\log_2(X[i,:] + 1))}{\text{MAD}(\log_2(X[i,:] + 1))}
+   X_{normalized}[i,j] = \frac{\log_2(X[i,j] + 1) - \text{median}(\log_2(X[i,:] + 1))}{k \cdot \text{MAD}(\log_2(X[i,:] + 1))}
 
 **Mathematical representation** (with ``log_transform=False``):
 
 .. math::
 
-   X_{normalized}[i,j] = \frac{X[i,j] - \text{median}(X[i,:])}{\text{MAD}(X[i,:])}
+   X_{normalized}[i,j] = \frac{X[i,j] - \text{median}(X[i,:])}{k \cdot \text{MAD}(X[i,:])}
 
 where in either case:
 
@@ -58,11 +73,16 @@ where in either case:
 
    \text{MAD}(Y[i,:]) = \text{median}(|Y[i,:] - \text{median}(Y[i,:])|)
 
-**Example** (``log_transform=False``): For sample [1, 5, 10, 100]:
+**Example** (``log_transform=False``, ``scale_to_sigma=False``): For sample
+[1, 5, 10, 100]:
 
 - Median = 7.5
 - MAD = median([6.5, 2.5, 2.5, 92.5]) = 4.5
 - Normalized ≈ [-1.44, -0.56, 0.56, 20.56]
+
+With ``scale_to_sigma=True`` every value above is divided by 1.4826,
+giving roughly [-0.97, -0.38, 0.38, 13.87] — interpretable directly as a
+robust z-score.
 
 Parameters
 ----------
@@ -92,7 +112,9 @@ Basic MAD normalization:
    # Create and apply normalizer.
    # By default, log_transform=True, so statistics are computed on log2(X + 1).
    # Pass log_transform=False to operate on the raw values instead.
-   normalizer = MADNormalizer()  # log_transform=True (default)
+   # scale_to_sigma=True multiplies MAD by 1.4826 so the output is a
+   # robust z-score (matches R's mad()).
+   normalizer = MADNormalizer(scale_to_sigma=True)
    normalized_data = normalizer.normalize(data)
 
    print("Original data:")
@@ -105,8 +127,8 @@ Basic MAD normalization:
    for i, sample in enumerate(normalized_data):
        print(f"Sample {i+1}: {np.median(sample):.6f}")
 
-   # To reproduce the worked example above (raw-scale MAD):
-   raw_normalizer = MADNormalizer(log_transform=False)
+   # To reproduce the worked example above (raw-scale MAD, no σ-consistency):
+   raw_normalizer = MADNormalizer(log_transform=False, scale_to_sigma=False)
    raw_normalized = raw_normalizer.normalize(data)
 
 Visualization:
@@ -134,6 +156,7 @@ Considerations
 - **Zero MAD handling**: Samples with zero MAD (all identical values) cannot be scaled and will raise a ``ValueError``
 - **Negative values with log_transform=True**: The default ``log_transform=True`` requires all input values to be non-negative; negative inputs raise a ``ValueError``. Use ``log_transform=False`` for data that may contain negatives
 - **Scale interpretation**: MAD-based scaling differs from standard deviation scaling, and with the default log transform the output is on a log2 scale rather than the original scale
+- **σ-consistency**: Pass ``scale_to_sigma=True`` to multiply MAD by 1.4826 so the output is a robust z-score; otherwise the per-row spread is ≈ 1.4826× larger than a true z-score, which matters for cross-tool comparisons (R, statsmodels), regularized regression with a fixed penalty strength, polynomial/interaction features, and any hard "x σ" thresholding downstream
 - **Computational cost**: Slightly more expensive than mean/std-based methods due to median calculations
 - **Distribution assumptions**: While robust, still assumes some variability within samples
 

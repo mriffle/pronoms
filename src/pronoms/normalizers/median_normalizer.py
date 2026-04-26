@@ -15,15 +15,23 @@ class MedianNormalizer:
     """
     Normalizer that scales each sample by its median.
 
-    This normalizer adjusts each sample (column) in the data matrix by dividing
-    by the median value of that sample, effectively centering the distribution
-    of each sample around a median of 1.0.
+    This normalizer adjusts each sample (row) in the data matrix by dividing
+    that sample by its own median and then multiplying by the mean of all
+    sample medians. After normalization every row's median equals
+    ``mean_of_medians``, preserving the overall scale of the dataset rather
+    than collapsing every row to a median of 1.
+
+    Inputs are arranged as ``(n_samples, n_features)`` (rows are samples,
+    columns are proteins/features), following the sklearn convention.
 
     Attributes
     ----------
     scaling_factors : Optional[np.ndarray]
-        Scaling factors used for normalization (median of each sample).
+        Per-sample medians used as the divisor (one value per row).
         Only available after calling normalize().
+    mean_of_medians : Optional[float]
+        Mean of ``scaling_factors``; the common value every row's median is
+        rescaled to. Only available after calling normalize().
     """
 
     def __init__(self):

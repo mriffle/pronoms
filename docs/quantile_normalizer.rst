@@ -34,13 +34,17 @@ For a data matrix X with shape (n_samples, n_features):
 
 1. **Sort each sample**: For each sample i, create sorted_i = sort(X[i, :])
 2. **Compute reference distribution**: ref[j] = mean(sorted_1[j], sorted_2[j], ..., sorted_n[j])
-3. **Create rank mapping**: For each sample, map original ranks to reference values
-4. **Reassign values**: Replace each original value with the corresponding reference value
+3. **Rank with average ties**: For each sample, compute the average rank of every value (so tied values share a single fractional rank)
+4. **Map ranks to reference**: Linearly interpolate the reference distribution at each rank, so tied values receive the average of the reference values at their tied positions (Bolstad et al., 2003)
 
 **Example**: For samples [1, 3, 2] and [10, 30, 20]:
 - Sorted: [1, 2, 3] and [10, 20, 30]
 - Reference: [(1+10)/2, (2+20)/2, (3+30)/2] = [5.5, 11, 16.5]
 - Result: [5.5, 16.5, 11] and [5.5, 16.5, 11]
+
+**Tie example**: For sample [5, 5, 10] with reference [5.33, 9.0, 14.33]:
+- Average ranks: [1.5, 1.5, 3]
+- Result: [(5.33 + 9.0) / 2, (5.33 + 9.0) / 2, 14.33] = [7.17, 7.17, 14.33]
 
 Parameters
 ----------

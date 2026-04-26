@@ -40,7 +40,7 @@ def data() -> np.ndarray:
 
 @pytest.mark.parametrize("log_transform", [True, False])
 def test_normalize_matches_closed_form(data, log_transform):
-    normalizer = MADNormalizer(log_transform=log_transform)
+    normalizer = MADNormalizer(log_transform=log_transform, scale_to_sigma=False)
     subset = data[:3, :]  # exclude the zero-MAD row
 
     Y = np.log2(subset + 1) if log_transform else subset
@@ -61,7 +61,7 @@ def test_normalize_matches_closed_form(data, log_transform):
 def test_per_row_median_is_zero_after_normalization(data, log_transform):
     """Docstring contract: each row has median 0 post-normalization."""
     subset = data[:3, :]
-    normalized = MADNormalizer(log_transform=log_transform).normalize(subset)
+    normalized = MADNormalizer(log_transform=log_transform, scale_to_sigma=False).normalize(subset)
     row_medians_after = np.median(normalized, axis=1)
     assert_allclose(row_medians_after, 0.0, atol=1e-12)
 
@@ -73,7 +73,7 @@ def test_known_values_log_false():
     Sample [-1, -2, -3]: median=-2, MAD=1 -> [1, 0, -1]
     """
     data = np.array([[1.0, 2.0, 3.0], [-1.0, -2.0, -3.0]])
-    normalizer = MADNormalizer(log_transform=False)
+    normalizer = MADNormalizer(log_transform=False, scale_to_sigma=False)
     normalized = normalizer.normalize(data)
     expected = np.array([[-1.0, 0.0, 1.0], [1.0, 0.0, -1.0]])
     assert_allclose(normalized, expected, rtol=1e-12)
@@ -97,7 +97,7 @@ def test_zero_mad_row_raises(data, log_transform, scale_label):
         r"for sample\(s\) at index/indices: \[3\]"
     )
     with pytest.raises(ValueError, match=expected_msg):
-        MADNormalizer(log_transform=log_transform).normalize(data)
+        MADNormalizer(log_transform=log_transform, scale_to_sigma=False).normalize(data)
 
 
 @pytest.mark.parametrize("log_transform", [True, False])
@@ -106,12 +106,12 @@ def test_non_finite_input_raises(data, log_transform, bad_value):
     bad = data.copy()
     bad[0, 0] = bad_value
     with pytest.raises(ValueError, match=r"NaN or Inf"):
-        MADNormalizer(log_transform=log_transform).normalize(bad)
+        MADNormalizer(log_transform=log_transform, scale_to_sigma=False).normalize(bad)
 
 
 @pytest.mark.parametrize("log_transform", [True, False])
 def test_invalid_dimensions(log_transform):
-    normalizer = MADNormalizer(log_transform=log_transform)
+    normalizer = MADNormalizer(log_transform=log_transform, scale_to_sigma=False)
     with pytest.raises(ValueError, match=r"must be a 2D array"):
         normalizer.normalize(np.array([1.0, 2.0, 3.0]))
     with pytest.raises(ValueError, match=r"Input data cannot be empty"):
@@ -121,7 +121,7 @@ def test_invalid_dimensions(log_transform):
 def test_negative_values_with_log_true_raise():
     data = np.array([[1.0, 2.0], [-1.0, 4.0]])
     with pytest.raises(ValueError, match=r"negative values"):
-        MADNormalizer(log_transform=True).normalize(data)
+        MADNormalizer(log_transform=True, scale_to_sigma=False).normalize(data)
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +132,7 @@ def test_negative_values_with_log_true_raise():
 @pytest.mark.parametrize("log_transform", [True, False])
 def test_plot_comparison_labels(data, log_transform):
     subset = data[:3, :]
-    normalizer = MADNormalizer(log_transform=log_transform)
+    normalizer = MADNormalizer(log_transform=log_transform, scale_to_sigma=False)
     normalized = normalizer.normalize(subset)
 
     fig = normalizer.plot_comparison(subset, normalized)
@@ -144,3 +144,70 @@ def test_plot_comparison_labels(data, log_transform):
     assert expected_ylabel_kind in ax.get_ylabel()
     # Centered output: a horizontal y=0 reference line should be present
     assert any(line.get_label() == "y = 0" for line in ax.get_lines())
+
+
+# ---------------------------------------------------------------------------
+# scale_to_sigma: sigma-equivalent scaling via the 1.4826 consistency constant
+# ---------------------------------------------------------------------------
+
+
+def test_default_scale_emits_deprecation_warning():
+    """Calling MADNormalizer() without scale_to_sigma must warn that the default
+    will change in a future major release. Suppresses with explicit False."""
+    with pytest.warns(DeprecationWarning, match=r"scale_to_sigma"):
+        MADNormalizer()
+
+
+def test_explicit_scale_to_sigma_false_does_not_warn():
+    """Pinning the current behavior with scale_to_sigma=False is silent."""
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        MADNormalizer(scale_to_sigma=False)
+        MADNormalizer(scale_to_sigma=True)
+
+
+def test_scale_to_sigma_true_applies_1p4826_factor():
+    """The σ-equivalent form divides by ``1.4826 * MAD`` rather than raw MAD,
+    so the output is exactly the raw form scaled by 1/1.4826."""
+    data = np.array(
+        [
+            [1.0, 2.0, 3.0, 4.0, 5.0],
+            [6.0, 7.0, 8.0, 9.0, 10.0],
+        ]
+    )
+    raw = MADNormalizer(log_transform=False, scale_to_sigma=False).normalize(data)
+    sigma = MADNormalizer(log_transform=False, scale_to_sigma=True).normalize(data)
+
+    assert_allclose(sigma, raw / 1.4826, rtol=1e-12, atol=0)
+
+
+def test_scale_to_sigma_recovers_unit_std_on_normal_data():
+    """For normal data, post-normalization per-row std must be ≈1 (defining
+    property of a robust z-score)."""
+    rng = np.random.default_rng(0)
+    X = rng.normal(loc=50.0, scale=5.0, size=(4, 10_000))
+
+    out = MADNormalizer(log_transform=False, scale_to_sigma=True).normalize(X)
+    per_row_std = out.std(axis=1)
+
+    # Loose tolerance: MAD->σ consistency is asymptotic and stochastic.
+    assert_allclose(per_row_std, 1.0, atol=0.05)
+
+
+def test_scale_to_sigma_attribute_is_stored():
+    n_default = MADNormalizer(scale_to_sigma=False)
+    n_sigma = MADNormalizer(scale_to_sigma=True)
+    assert n_default.scale_to_sigma is False
+    assert n_sigma.scale_to_sigma is True
+
+
+def test_row_mads_remains_raw_mad_under_scale_to_sigma_true():
+    """``row_mads`` is documented as the raw MAD, regardless of how the
+    divisor was scaled. Users keep a stable inspection attribute."""
+    data = np.array([[1.0, 2.0, 3.0, 4.0, 5.0]])
+    n = MADNormalizer(log_transform=False, scale_to_sigma=True)
+    n.normalize(data)
+    # MAD of [1,2,3,4,5] around median 3 is median([2,1,0,1,2]) = 1.0 (raw).
+    assert_allclose(n.row_mads, [1.0], rtol=1e-12)

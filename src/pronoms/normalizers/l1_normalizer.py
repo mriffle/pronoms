@@ -64,16 +64,14 @@ class L1Normalizer:
         # Calculate L1 norm (sum of absolute values) for each sample (row)
         l1_norms = np.sum(np.abs(X), axis=1, keepdims=True)
 
-        # Avoid division by zero
-        l1_norms = np.where(l1_norms == 0, 1.0, l1_norms)
-
-        # Store scaling factors
+        # Store the true norms and their unbiased mean for inspection.
         self.scaling_factors = l1_norms.flatten()
-        # Calculate mean of scaling factors to preserve original scale
-        self.mean_of_scaling_factors = np.mean(self.scaling_factors)
+        self.mean_of_scaling_factors = float(np.mean(self.scaling_factors))
 
-        # Normalize each sample by its L1 norm and multiply by mean of scaling factors
-        normalized_data = (X / l1_norms) * self.mean_of_scaling_factors
+        # Zero-guard the divisor only; an all-zero row stays all-zero because
+        # the numerator is also zero.
+        divisor = np.where(l1_norms == 0, 1.0, l1_norms)
+        normalized_data = (X / divisor) * self.mean_of_scaling_factors
 
         return normalized_data
 

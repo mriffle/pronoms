@@ -109,7 +109,7 @@ Considerations
 --------------
 
 - **Scale dependency**: Results depend on the absolute scale of the original data
-- **Zero handling**: Samples with all zero values cannot be normalized (division by zero)
+- **Zero handling**: All-zero rows are passed through as zero (the divisor is guarded against division by zero); ``scaling_factors`` reports the true L1 norm (``0`` for these rows), and ``mean_of_scaling_factors`` is the unbiased mean of the true norms
 - **Outlier sensitivity**: Large outliers can dominate the L1 norm and compress other values
 - **Information loss**: Absolute magnitude information is lost, only proportions are preserved
 - **Not suitable for negative-dominant data**: Less meaningful when most values are negative

@@ -6,6 +6,7 @@ This module provides a class for quantile normalization of proteomics data.
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import rankdata
 
 from ..utils.plotting import create_hexbin_comparison
 from ..utils.validators import check_nan_inf, validate_input_data
@@ -18,6 +19,9 @@ class QuantileNormalizer:
     Quantile normalization makes the distribution of intensities for each sample
     identical by replacing each value with the mean of the corresponding quantiles
     across all samples.
+
+    Tied values within a row receive the same normalized value (the average of
+    the reference values at the tied ranks), following Bolstad et al. (2003).
 
     Attributes
     ----------
@@ -58,33 +62,17 @@ class QuantileNormalizer:
         if has_nan_inf:
             raise ValueError("Input data contains NaN or Inf values. Please handle these values before normalization.")
 
-        n_samples, n_features = X.shape
-        normalized_data = np.zeros_like(X)
+        n_features = X.shape[1]
 
-        # Store original indices for each row to reconstruct the data later
-        indices = np.zeros_like(X, dtype=int)
-        for i in range(n_samples):
-            indices[i, :] = np.argsort(X[i, :])
-
-        # Sort each row
-        sorted_data = np.sort(X, axis=1)
-
-        # Calculate the mean across each column of the sorted data
-        # This creates a reference distribution
-        reference = np.mean(sorted_data, axis=0)
+        # Reference distribution: column-mean of row-sorted data.
+        reference = np.mean(np.sort(X, axis=1), axis=0)
         self.reference_distribution = reference
 
-        # Replace values in each row with the corresponding value from the reference
-        for i in range(n_samples):
-            # Get the sorting indices for this row
-            sort_idx = indices[i, :]
-
-            # Create an array to map sorted indices back to original positions
-            unsort_idx = np.zeros_like(sort_idx)
-            unsort_idx[sort_idx] = np.arange(n_features)
-
-            # Assign reference values to the original positions
-            normalized_data[i, :] = reference[unsort_idx]
+        # Tie-aware mapping: average ranks (1..N) → reference values.
+        # Linear interpolation reproduces the Bolstad et al. tie rule, since for
+        # a tie at integer half-ranks like 1.5 it returns (ref[0] + ref[1]) / 2.
+        ranks = rankdata(X, method="average", axis=1)
+        normalized_data = np.interp(ranks, np.arange(1, n_features + 1), reference)
 
         return normalized_data
 

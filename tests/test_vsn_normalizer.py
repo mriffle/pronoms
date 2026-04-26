@@ -67,7 +67,9 @@ def mock_params() -> dict:
 @pytest.mark.parametrize("calib", ["affine", "none", "shift", "maximum"])
 @patch("pronoms.normalizers.vsn_normalizer.setup_r_environment")
 def test_init_stores_parameters(_mock_setup, calib):
-    normalizer = VSNNormalizer(calib=calib, reference_sample=1, lts_quantile=0.5)
+    # reference_sample is deprecated; passing it emits a DeprecationWarning.
+    with pytest.warns(DeprecationWarning, match=r"reference_sample"):
+        normalizer = VSNNormalizer(calib=calib, reference_sample=1, lts_quantile=0.5)
     assert normalizer.calib == calib
     assert normalizer.reference_sample == 1
     assert normalizer.lts_quantile == 0.5
@@ -201,13 +203,28 @@ def test_vsn_script_without_reference_sample(_mock_setup):
 
 
 @patch("pronoms.normalizers.vsn_normalizer.setup_r_environment")
-def test_vsn_script_with_reference_sample_uses_one_indexed_value(_mock_setup):
-    """Python is 0-indexed; R is 1-indexed. ``reference_sample=2`` must
-    appear as ``reference = 3`` in the generated script."""
-    normalizer = VSNNormalizer(reference_sample=2, lts_quantile=0.75)
+def test_vsn_script_never_emits_reference_argument(_mock_setup):
+    """``reference_sample`` is soft-deprecated: passing a value emits a
+    DeprecationWarning at construction and the generated R script must NOT
+    include ``reference = N`` (R-VSN's reference argument expects a fitted
+    vsn object, not an integer index, so the previous behavior crashed at
+    runtime). The script falls back to the default vsn2 call."""
+    with pytest.warns(DeprecationWarning, match=r"reference_sample"):
+        normalizer = VSNNormalizer(reference_sample=2, lts_quantile=0.75)
     script = normalizer._create_vsn_script()
-    assert "reference = 3" in script
+    assert "reference =" not in script
     assert "lts.quantile = 0.75" in script
+
+
+@patch("pronoms.normalizers.vsn_normalizer.setup_r_environment")
+def test_reference_sample_none_does_not_warn(_mock_setup):
+    """The default reference_sample=None must remain warning-free."""
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        VSNNormalizer(reference_sample=None)
+        VSNNormalizer()
 
 
 # ---------------------------------------------------------------------------
@@ -245,13 +262,81 @@ def test_plot_comparison_forwards_args_to_hexbin_helper(
 
 
 @pytest.mark.skipif(not _HAS_R_VSN, reason="R or VSN package not available")
-def test_real_r_vsn_smoke():
-    """End-to-end against the real ``vsn`` package; verifies output shape and
-    that fitted parameters are populated."""
+def test_real_r_vsn_returns_finite_output_with_correct_shape():
+    """Wrapper-level: shape and finite-ness round-trip cleanly through the
+    rpy2 boundary."""
     rng = np.random.default_rng(0)
-    n_samples, n_features = 5, 30
-    base = rng.lognormal(mean=5, sigma=1, size=(n_samples, n_features))
+    base = rng.lognormal(mean=5, sigma=1, size=(5, 30))
     out = VSNNormalizer().normalize(base)
 
     assert out.shape == base.shape
     assert np.all(np.isfinite(out))
+
+
+@pytest.mark.skipif(not _HAS_R_VSN, reason="R or VSN package not available")
+def test_real_r_vsn_preserves_within_sample_feature_ranks():
+    """Wrapper-level orientation check. VSN applies a strictly monotone
+    transformation per sample, so within each sample the rank-order of
+    features must be identical before and after. If the wrapper accidentally
+    transposed the content (returning features × samples instead of samples
+    × features), this fails — the shape check alone cannot catch it on a
+    near-square or symmetric input."""
+    rng = np.random.default_rng(1)
+    base = rng.lognormal(mean=5, sigma=1, size=(5, 30))
+    out = VSNNormalizer().normalize(base)
+
+    np.testing.assert_array_equal(np.argsort(base, axis=1), np.argsort(out, axis=1))
+
+
+@pytest.mark.skipif(not _HAS_R_VSN, reason="R or VSN package not available")
+def test_real_r_vsn_lts_quantile_reaches_r():
+    """Wrapper-level passthrough: ``lts_quantile`` must actually reach
+    ``vsn2()`` in R, not just appear in the generated script text. Two
+    markedly different quantiles on the same data — with outliers, so the
+    LTS regression has something to trim differently — must produce
+    different outputs."""
+    rng = np.random.default_rng(2)
+    base = rng.lognormal(mean=5, sigma=1, size=(5, 30))
+    base[0, 0] *= 1000
+    base[2, 5] *= 500
+
+    out_low = VSNNormalizer(lts_quantile=0.5).normalize(base)
+    out_high = VSNNormalizer(lts_quantile=0.99).normalize(base)
+
+    assert not np.allclose(out_low, out_high)
+
+
+@pytest.mark.skipif(not _HAS_R_VSN, reason="R or VSN package not available")
+def test_real_r_vsn_coefficients_have_expected_size():
+    """Wrapper-level extraction: ``vsn_params['coefficients']`` for
+    ``calib='affine'`` must contain one (intercept, slope) pair per sample.
+    R-VSN returns a (1, n_samples, 2) array under the default unstratified
+    fit; our extraction must reach the right slot and yield 2 * n_samples
+    finite values."""
+    rng = np.random.default_rng(4)
+    base = rng.lognormal(mean=5, sigma=1, size=(5, 30))
+    normalizer = VSNNormalizer()
+    normalizer.normalize(base)
+
+    coef = normalizer.vsn_params.rx2("coefficients")
+    arr = np.asarray(coef, dtype=float)
+    assert arr.size == 2 * base.shape[0]
+    assert np.all(np.isfinite(arr))
+
+
+@pytest.mark.skipif(not _HAS_R_VSN, reason="R or VSN package not available")
+def test_real_r_vsn_reference_sample_is_ignored_with_warning():
+    """``reference_sample`` is soft-deprecated. Passing any value must:
+    (a) emit DeprecationWarning at construction;
+    (b) still produce a valid VSN result that exactly matches the
+        ``reference_sample=None`` output — confirming the broken
+        ``reference = N`` R-call was dropped, not silently retained."""
+    rng = np.random.default_rng(5)
+    base = rng.lognormal(mean=5, sigma=1, size=(5, 30))
+
+    with pytest.warns(DeprecationWarning, match=r"reference_sample"):
+        normalizer = VSNNormalizer(reference_sample=0)
+    out_with_ref = normalizer.normalize(base)
+    out_default = VSNNormalizer().normalize(base)
+
+    np.testing.assert_array_equal(out_with_ref, out_default)

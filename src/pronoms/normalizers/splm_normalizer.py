@@ -12,7 +12,8 @@ class SPLMNormalizer:
     Normalizer based on Stable Protein Log-Mean Normalization (SPLM-Norm).
 
     Scales proteomics intensity data using a subset of stably expressed proteins
-    (lowest coefficient of variation in log-space). It uses the mean of
+    (lowest coefficient of variation, computed in linear space as
+    ``std(X) / mean(X)`` per protein across samples). It uses the mean of
     log-transformed intensities of these stable proteins per sample to define
     scaling factors, performs normalization in log-space, recenters, and then
     transforms back to the original scale.
@@ -38,7 +39,8 @@ class SPLMNormalizer:
         Parameters
         ----------
         num_stable_proteins : int, optional
-            Number of proteins with the lowest log-space CV to use as stable references, by default 100.
+            Number of proteins with the lowest linear-space CV (``std/mean``)
+            to use as stable references, by default 100.
         epsilon : float, optional
             Small constant added to intensities before log transformation to avoid log(0), by default 1e-6.
         """
@@ -89,36 +91,28 @@ class SPLMNormalizer:
                 f"cannot be greater than the number of features ({X.shape[1]})."
             )
 
-        # 2. Log-transform
-        # Add epsilon before log to avoid log(0) or log(negative) if data wasn't strictly positive
-        X_log = np.log(X + self.epsilon)
+        # 2. Compute per-protein CV in linear space (std/mean across samples).
+        # Constant proteins (std == 0) get CV=0 and are most preferred.
+        # Proteins with zero mean would give an undefined CV; treat those as +inf
+        # so they are deprioritized rather than crashing the selection.
+        means = np.mean(X, axis=0)
+        stds = np.std(X, axis=0)
 
-        # 3. Compute protein-wise CV in log space
-        log_means = np.mean(X_log, axis=0)
-        log_stds = np.std(X_log, axis=0)
+        cvs = np.full_like(means, np.inf)
+        nonzero_mean = means != 0
+        cvs[nonzero_mean] = stds[nonzero_mean] / means[nonzero_mean]
+        cvs[stds == 0] = 0.0
 
-        # Handle potential division by zero (assign Inf CV to proteins with zero mean or std dev)
-        # Proteins with zero std dev (constant log value) should have CV=0 and be preferred.
-        log_cvs = np.full_like(log_means, np.inf)  # Default to Inf
-        # Calculate CV only where mean is non-zero (and implicitly std>0 for finite CV)
-        valid_mask = log_means != 0
-        # Avoid division by zero warning for log_stds == 0 cases
-        non_zero_std_mask = log_stds != 0
-        final_mask = valid_mask & non_zero_std_mask
-        log_cvs[final_mask] = log_stds[final_mask] / log_means[final_mask]
-        # Assign CV=0 to proteins with zero standard deviation (constant proteins)
-        log_cvs[log_stds == 0] = 0
-
-        if np.all(np.isinf(log_cvs)):
+        if np.all(np.isinf(cvs)):
             raise ValueError("Could not compute valid CVs for any protein. Check input data variance.")
 
-        # 4. Select stable reference proteins
-        # Use partition instead of sort for efficiency if only top N are needed
-        # partition puts the k-th smallest element in its sorted position
-        partitioned_indices = np.argpartition(log_cvs, self.num_stable_proteins - 1)
-        self.stable_protein_indices = partitioned_indices[: self.num_stable_proteins]
-        # Ensure the indices are sorted for consistent testing/debugging if needed
-        self.stable_protein_indices = np.sort(self.stable_protein_indices)
+        # 3. Select stable reference proteins (smallest CVs).
+        partitioned_indices = np.argpartition(cvs, self.num_stable_proteins - 1)
+        self.stable_protein_indices = np.sort(partitioned_indices[: self.num_stable_proteins])
+
+        # 4. Log-transform for the centering step.
+        # Epsilon guards against log(0) when intensities reach the floor.
+        X_log = np.log(X + self.epsilon)
 
         # 5. Compute sample-wise log-scaling factors
         stable_log_data = X_log[:, self.stable_protein_indices]

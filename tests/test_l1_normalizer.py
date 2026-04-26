@@ -101,7 +101,9 @@ def test_normalized_rows_share_a_common_l1_norm(simple_data):
 
 def test_all_zero_row_is_preserved_as_zero():
     """An all-zero row has L1 norm 0; the implementation guards against
-    division by zero and the row stays all zeros."""
+    division by zero and the row stays all zeros. The stored scaling factor
+    must report the true L1 norm (0) and the rescaling target must be the
+    unbiased mean of the true norms."""
     data = np.array(
         [
             [0, 0, 0, 0, 0],
@@ -113,10 +115,20 @@ def test_all_zero_row_is_preserved_as_zero():
     normalizer = L1Normalizer()
     normalized = normalizer.normalize(data)
 
-    # Stored scaling factor for the zero row is the safe-replacement value 1.0
-    assert_allclose(normalizer.scaling_factors, [1.0, 300.0, 450.0])
-    # The zero row remains exactly zero
+    # True L1 norms (no 0 → 1 substitution leaking into the stored attribute).
+    assert_allclose(normalizer.scaling_factors, [0.0, 300.0, 450.0])
+
+    # Mean over true norms (0 + 300 + 450) / 3 = 250, NOT (1 + 300 + 450) / 3.
+    assert normalizer.mean_of_scaling_factors == pytest.approx(250.0, rel=1e-12)
+
+    # The zero row remains exactly zero.
     assert_allclose(normalized[0], 0.0, atol=0)
+
+    # Non-zero rows are scaled by the unbiased mean (250), not by 250.333...
+    expected_row1 = data[1] / 300.0 * 250.0
+    expected_row2 = data[2] / 450.0 * 250.0
+    assert_allclose(normalized[1], expected_row1, rtol=1e-12)
+    assert_allclose(normalized[2], expected_row2, rtol=1e-12)
 
 
 # ---------------------------------------------------------------------------

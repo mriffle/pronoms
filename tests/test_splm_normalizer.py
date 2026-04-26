@@ -134,6 +134,35 @@ def test_zero_variance_protein_is_picked_as_stable(data):
     assert normalizer.stable_protein_indices[0] == 4
 
 
+def test_cv_is_computed_in_linear_space():
+    """Selection must rank proteins by linear-space CV (std/mean), not by a
+    log-space ratio. With a noisy low-mean group whose log-means are negative
+    and a stable high-mean group, only the high-mean group should be picked.
+    A log-space ratio std(log X)/mean(log X) flips sign and silently picks the
+    noisy low-mean proteins instead."""
+    rng = np.random.default_rng(42)
+    n_samples = 5
+    n_per_group = 50
+
+    noisy_means = rng.uniform(0.4, 0.6, n_per_group)
+    stable_means = rng.uniform(4.5, 5.5, n_per_group)
+    all_means = np.concatenate([noisy_means, stable_means])
+    n_features = 2 * n_per_group
+
+    X = np.empty((n_samples, n_features))
+    for j in range(n_features):
+        X[:, j] = rng.normal(all_means[j], 0.05, n_samples)
+    X = np.maximum(X, 1e-3)
+
+    normalizer = SPLMNormalizer(num_stable_proteins=10)
+    normalizer.normalize(X)
+
+    # Stable proteins must come from the high-mean group (indices >= n_per_group),
+    # whose linear-space CV is much smaller despite both groups having similar
+    # log-space std.
+    assert np.all(normalizer.stable_protein_indices >= n_per_group)
+
+
 def test_all_features_used_when_n_stable_equals_features(data):
     n_stable = data.shape[1]
     normalizer = SPLMNormalizer(num_stable_proteins=n_stable)

@@ -174,6 +174,29 @@ def test_plot_comparison_log_mode_labels(additive_data):
     assert ax.get_title() == "Median Polish Normalization Comparison"
 
 
+def test_plot_comparison_log_mode_diagonal_endpoints(additive_data):
+    """The 'y = log(x)' diagonal must be drawn against the actual coordinate
+    system: x-coords are raw values (axis is ``xscale='log'``), and y-coords
+    are ``log(x)`` to match the log-space y data."""
+    exp_data = np.exp(additive_data)
+    normalizer = MedianPolishNormalizer(log_transform=True, epsilon=1e-12)
+    normalized = normalizer.normalize(exp_data)
+
+    fig = normalizer.plot_comparison(exp_data, normalized)
+    ax = fig.axes[0]
+
+    line = next(line for line in ax.get_lines() if line.get_label() == "y = log(x)")
+    xdata = line.get_xdata()
+    ydata = line.get_ydata()
+
+    x_positive = exp_data.flatten()[exp_data.flatten() > 0]
+    x_min = float(x_positive.min())
+    x_max = float(x_positive.max())
+
+    assert_allclose(xdata, [x_min, x_max], rtol=1e-12)
+    assert_allclose(ydata, [np.log(x_min), np.log(x_max)], rtol=1e-12)
+
+
 def test_plot_comparison_no_log_mode_labels(additive_data):
     positive = additive_data + 10.0
     normalizer = MedianPolishNormalizer(log_transform=False)
