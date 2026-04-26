@@ -15,10 +15,11 @@ MAD normalization is a robust alternative to z-score normalization that uses med
 
 The approach works by:
 
-1. **Centering**: Subtracting the median from each value
-2. **Scaling**: Dividing by the Median Absolute Deviation (MAD)
+1. **(Optional) Log transform**: By default the data is transformed to ``log2(X + 1)`` before computing statistics. Set ``log_transform=False`` to operate on the raw values.
+2. **Centering**: Subtracting the (log) median from each value
+3. **Scaling**: Dividing by the (log) Median Absolute Deviation (MAD)
 
-This creates standardized samples that are less sensitive to outliers compared to traditional z-score normalization.
+This creates standardized samples that are less sensitive to outliers compared to traditional z-score normalization. Working in log-space is the default because it stabilizes variance and matches the typical multiplicative noise structure of mass-spectrometry intensity data.
 
 Key Features
 ------------
@@ -31,25 +32,34 @@ Key Features
 Algorithm Details
 -----------------
 
-For a data matrix X with shape (n_samples, n_features):
+For a data matrix X with shape (n_samples, n_features), let ``Y`` denote the data
+on which the statistics are computed. With the default ``log_transform=True`` the
+algorithm uses ``Y = log2(X + 1)``; with ``log_transform=False`` it uses ``Y = X``.
 
-1. **Calculate median**: For each sample i, compute median_i = median(X[i, :])
-2. **Calculate MAD**: MAD_i = median(|X[i, :] - median_i|)
-3. **Apply transformation**: X_normalized[i, j] = (X[i, j] - median_i) / MAD_i
+1. **Calculate median**: For each sample i, compute median_i = median(Y[i, :])
+2. **Calculate MAD**: MAD_i = median(|Y[i, :] - median_i|)
+3. **Apply transformation**: X_normalized[i, j] = (Y[i, j] - median_i) / MAD_i
 
-**Mathematical representation**:
+**Mathematical representation** (with ``log_transform=True``, the default):
+
+.. math::
+
+   X_{normalized}[i,j] = \frac{\log_2(X[i,j] + 1) - \text{median}(\log_2(X[i,:] + 1))}{\text{MAD}(\log_2(X[i,:] + 1))}
+
+**Mathematical representation** (with ``log_transform=False``):
 
 .. math::
 
    X_{normalized}[i,j] = \frac{X[i,j] - \text{median}(X[i,:])}{\text{MAD}(X[i,:])}
 
-where:
+where in either case:
 
 .. math::
 
-   \text{MAD}(X[i,:]) = \text{median}(|X[i,:] - \text{median}(X[i,:])|)
+   \text{MAD}(Y[i,:]) = \text{median}(|Y[i,:] - \text{median}(Y[i,:])|)
 
-**Example**: For sample [1, 5, 10, 100]:
+**Example** (``log_transform=False``): For sample [1, 5, 10, 100]:
+
 - Median = 7.5
 - MAD = median([6.5, 2.5, 2.5, 92.5]) = 4.5
 - Normalized ≈ [-1.44, -0.56, 0.56, 20.56]
@@ -79,19 +89,25 @@ Basic MAD normalization:
        [5, 8, 6, 9, 7]            # Sample 3: low values
    ])
    
-   # Create and apply normalizer
-   normalizer = MADNormalizer()
+   # Create and apply normalizer.
+   # By default, log_transform=True, so statistics are computed on log2(X + 1).
+   # Pass log_transform=False to operate on the raw values instead.
+   normalizer = MADNormalizer()  # log_transform=True (default)
    normalized_data = normalizer.normalize(data)
-   
+
    print("Original data:")
    print(data)
-   print("\nMAD normalized data:")
+   print("\nMAD normalized data (computed in log2 space):")
    print(normalized_data)
-   
-   # Check centering (medians should be ~0)
+
+   # Check centering (medians should be ~0 in either mode)
    print("\nSample medians after normalization:")
    for i, sample in enumerate(normalized_data):
        print(f"Sample {i+1}: {np.median(sample):.6f}")
+
+   # To reproduce the worked example above (raw-scale MAD):
+   raw_normalizer = MADNormalizer(log_transform=False)
+   raw_normalized = raw_normalizer.normalize(data)
 
 Visualization:
 
@@ -115,8 +131,9 @@ MADNormalizer is particularly useful when:
 Considerations
 --------------
 
-- **Zero MAD handling**: Samples with zero MAD (all identical values) cannot be scaled
-- **Scale interpretation**: MAD-based scaling differs from standard deviation scaling
+- **Zero MAD handling**: Samples with zero MAD (all identical values) cannot be scaled and will raise a ``ValueError``
+- **Negative values with log_transform=True**: The default ``log_transform=True`` requires all input values to be non-negative; negative inputs raise a ``ValueError``. Use ``log_transform=False`` for data that may contain negatives
+- **Scale interpretation**: MAD-based scaling differs from standard deviation scaling, and with the default log transform the output is on a log2 scale rather than the original scale
 - **Computational cost**: Slightly more expensive than mean/std-based methods due to median calculations
 - **Distribution assumptions**: While robust, still assumes some variability within samples
 

@@ -4,15 +4,16 @@ Plotting utilities for Pronoms.
 This module provides functions for visualizing proteomics data before and after normalization.
 """
 
-import numpy as np
+from typing import Optional
+
 import matplotlib.pyplot as plt
-from typing import Optional, Tuple
+import numpy as np
 
 
 def create_hexbin_comparison(
     before_data: np.ndarray,
     after_data: np.ndarray,
-    figsize: Tuple[int, int] = (10, 8),
+    figsize: tuple[int, int] = (10, 8),
     title: str = "Before vs. After Normalization",
     xlabel: str = "Before Normalization",
     ylabel: str = "After Normalization",
@@ -23,12 +24,12 @@ def create_hexbin_comparison(
     autoscale_y: bool = False,
     add_center_line_y0: bool = False,
     log_axes: bool = True,
-    xlim: Optional[Tuple[float, float]] = None,
-    ylim: Optional[Tuple[float, float]] = None
+    xlim: Optional[tuple[float, float]] = None,
+    ylim: Optional[tuple[float, float]] = None,
 ) -> plt.Figure:
     """
     Create a 2D hexbin density plot comparing values before and after normalization.
-    
+
     Parameters
     ----------
     before_data : np.ndarray
@@ -65,7 +66,7 @@ def create_hexbin_comparison(
         Custom limits for the x-axis, by default None.
     ylim : Optional[Tuple[float, float]], optional
         Custom limits for the y-axis, by default None.
-    
+
     Returns
     -------
     plt.Figure
@@ -73,13 +74,11 @@ def create_hexbin_comparison(
     """
     # Check that data shapes match
     if before_data.shape != after_data.shape:
-        raise ValueError(
-            f"Data shapes must match: {before_data.shape} != {after_data.shape}"
-        )
-    
+        raise ValueError(f"Data shapes must match: {before_data.shape} != {after_data.shape}")
+
     # Create figure and axes
     fig, ax = plt.subplots(figsize=figsize)
-    
+
     # Flatten the data for plotting
     x = before_data.flatten()
     y = after_data.flatten()
@@ -89,25 +88,25 @@ def create_hexbin_comparison(
     y_label = ylabel
     if log_axes:
         # Add 1 before log10 to handle zeros
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             x_log = np.log10(x + 1)
             y_log = np.log10(y + 1)
         valid_indices = np.isfinite(x_log) & np.isfinite(y_log)
         x = x_log[valid_indices]
         y = y_log[valid_indices]
-        x_label = f'Log10({xlabel} + 1)'
-        y_label = f'Log10({ylabel} + 1)'
-    elif transform_original == 'log2':
+        x_label = f"Log10({xlabel} + 1)"
+        y_label = f"Log10({ylabel} + 1)"
+    elif transform_original == "log2":
         # Add 1 before log2 to handle zeros, filter out resulting NaNs/Infs if any
         # Use np.errstate to suppress warnings about invalid values (handled by filtering)
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             x_transformed = np.log2(x + 1)
-        
+
         # Filter out non-finite values that might arise from log2(-ve+1) or original NaNs/Infs
         valid_indices = np.isfinite(x_transformed) & np.isfinite(y)
         x = x_transformed[valid_indices]
         y = y[valid_indices]
-        x_label = 'Log2(Original Value + 1)'
+        x_label = "Log2(Original Value + 1)"
     else:
         # If no transformation, just filter out non-finite values from both
         valid_indices = np.isfinite(x) & np.isfinite(y)
@@ -115,31 +114,31 @@ def create_hexbin_comparison(
         y = y[valid_indices]
 
     # Create hexbin plot
-    hb = ax.hexbin(x, y, gridsize=gridsize, cmap=cmap, mincnt=1, bins='log')
-    
+    hb = ax.hexbin(x, y, gridsize=gridsize, cmap=cmap, mincnt=1, bins="log")
+
     # Add colorbar
-    cb = fig.colorbar(hb, ax=ax, label='log10(count)')
-    
+    fig.colorbar(hb, ax=ax, label="log10(count)")
+
     # Add reference lines based on parameters
     if add_center_line_y0:
-        ax.axhline(0, color='red', linestyle='--', linewidth=1, label='y = 0')
+        ax.axhline(0, color="red", linestyle="--", linewidth=1, label="y = 0")
         # Ensure legend includes this if added
         ax.legend()
     elif add_identity_line and not autoscale_y:
         # Only add identity line if axes aspect ratio is equal and center line wasn't added
-        lims = [
-            np.min([ax.get_xlim(), ax.get_ylim()]),
-            np.max([ax.get_xlim(), ax.get_ylim()]),
+        lims: list[float] = [
+            float(np.min([ax.get_xlim(), ax.get_ylim()])),
+            float(np.max([ax.get_xlim(), ax.get_ylim()])),
         ]
-        ax.plot(lims, lims, 'r--', alpha=0.7, zorder=0, label='y = x')
+        ax.plot(lims, lims, "r--", alpha=0.7, zorder=0, label="y = x")
         # Ensure legend includes this if added
         ax.legend()
-    
+
     # Set labels and title
     ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
     ax.set_title(title)
-    
+
     # Set custom axis limits if provided
     if xlim is not None:
         ax.set_xlim(xlim)
@@ -148,12 +147,13 @@ def create_hexbin_comparison(
 
     # Set aspect ratio only if y-axis autoscaling is not requested
     if not autoscale_y:
-        ax.set_aspect('equal', adjustable='box')
-    
+        ax.set_aspect("equal", adjustable="box")
+
     # Adjust layout
     plt.tight_layout()
-    
+
     return fig
+
 
 # Alias for backward compatibility and VSNNormalizer usage
 plot_comparison_hexbin = create_hexbin_comparison

@@ -1,9 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Optional, Tuple
+from typing import Optional
 
-from ..utils.validators import validate_input_data, check_nan_inf
+import matplotlib.pyplot as plt
+import numpy as np
+
 from ..utils.plotting import create_hexbin_comparison
+from ..utils.validators import check_nan_inf, validate_input_data
+
 
 class MADNormalizer:
     """
@@ -71,16 +73,14 @@ class MADNormalizer:
             - If MAD is zero for any sample (which prevents normalization).
         """
         # Validate input data type and shape first
-        X_validated = validate_input_data(X) # Use a different name to avoid modifying X if log_transform is False
+        X_validated = validate_input_data(X)  # Use a different name to avoid modifying X if log_transform is False
         if X_validated.ndim != 2 or X_validated.shape[1] == 0:
             raise ValueError("X must be a 2D array with at least one feature (n_samples, n_features).")
 
         # Check for NaN or Inf values (on original data)
         has_nan_inf, _ = check_nan_inf(X_validated)
         if has_nan_inf:
-            raise ValueError(
-                "Input data contains NaN or Inf values. Please handle these values before normalization."
-            )
+            raise ValueError("Input data contains NaN or Inf values. Please handle these values before normalization.")
 
         data_to_process = X_validated
         scale_type = "original"
@@ -91,14 +91,14 @@ class MADNormalizer:
                 raise ValueError("Input data contains negative values. Log2 transformation cannot be applied.")
 
             # Apply log2 transformation
-            with np.errstate(divide='ignore', invalid='ignore'):
+            with np.errstate(divide="ignore", invalid="ignore"):
                 log_X = np.log2(X_validated + 1)
 
             # Check for issues potentially introduced by log2
             if np.any(~np.isfinite(log_X)):
-                 raise ValueError(
-                     "Non-finite values encountered after log2 transformation. Check input data near 0 or -1."
-                 )
+                raise ValueError(
+                    "Non-finite values encountered after log2 transformation. Check input data near 0 or -1."
+                )
             data_to_process = log_X
             scale_type = "log2(X+1)"
 
@@ -116,9 +116,10 @@ class MADNormalizer:
         # Check for zero MAD values
         if np.any(row_mads == 0):
             zero_mad_indices = np.where(row_mads.flatten() == 0)[0]
+            indices_repr = [int(i) for i in zero_mad_indices]
             raise ValueError(
-                # Explicitly convert indices to int for consistent string formatting
-                f"Cannot normalize: MAD of {scale_type} data is zero for sample(s) at index/indices: {[int(i) for i in zero_mad_indices]}. "
+                f"Cannot normalize: MAD of {scale_type} data is zero "
+                f"for sample(s) at index/indices: {indices_repr}. "
                 f"This usually means all {scale_type} values in the sample are identical."
             )
 
@@ -131,9 +132,13 @@ class MADNormalizer:
 
         return normalized_data
 
-    def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray,
-                       figsize: Tuple[int, int] = (10, 8),
-                       title: str = "MAD Normalization Comparison") -> plt.Figure:
+    def plot_comparison(
+        self,
+        before_data: np.ndarray,
+        after_data: np.ndarray,
+        figsize: tuple[int, int] = (10, 8),
+        title: str = "MAD Normalization Comparison",
+    ) -> plt.Figure:
         """
         Plot data before vs after normalization using a 2D hexbin density plot.
 
@@ -161,9 +166,13 @@ class MADNormalizer:
             figsize=figsize,
             title=title,
             xlabel="Original Data",
-            ylabel=f"After MAD Normalization ({'Standardized Log2 Scale' if self.log_transform else 'Standardized Original Scale'})",
+            ylabel=(
+                "After MAD Normalization ("
+                f"{'Standardized Log2 Scale' if self.log_transform else 'Standardized Original Scale'}"
+                ")"
+            ),
             autoscale_y=True,
             add_identity_line=False,
-            add_center_line_y0=True # Centered around 0 in both cases
+            add_center_line_y0=True,  # Centered around 0 in both cases
         )
         return fig

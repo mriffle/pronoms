@@ -25,8 +25,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
-    "black",
-    "flake8",
+    "pytest-cov",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "pandas-stubs",
+    "types-seaborn",
     "jupyter"
 ]
 
@@ -36,3 +39,75 @@ Repository = "https://github.com/mriffle/pronoms"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# ---------------------------------------------------------------------------
+# Ruff -- linter + formatter (replaces flake8 + black)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 120
+target-version = "py39"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# A broad-but-pragmatic ruleset for scientific Python:
+# E/W  pycodestyle    F  pyflakes (real bugs)    I  isort
+# B    bugbear        C4 comprehensions          SIM simplify
+# UP   pyupgrade      PT pytest-style            NPY numpy
+# RUF  ruff-specific
+select = ["E", "W", "F", "I", "B", "C4", "SIM", "UP", "PT", "NPY", "RUF"]
+ignore = [
+    # Conflicts with the formatter; keep formatter as the source of truth.
+    "E501",
+    # Allow ``assert`` in tests and library code.
+    "S101",
+    # ``×`` (mul. sign) and ``≤`` are conventional in scientific docstrings.
+    "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use looser rules for assertion style and fixture scoping.
+"tests/**/*.py" = [
+    "B017",   # assertRaises(Exception)-style is fine in pytest.raises
+    "PT011",  # ``match=`` is not always required
+    "PT012",  # multi-statement with-blocks in raises are OK
+    "PT019",  # unittest.mock.patch decorators inject _mock_* args (not fixtures)
+    "SIM117", # nested ``with`` blocks are clearer than combined ones in test setup
+]
+"src/pronoms/normalizers/__init__.py" = [
+    "F401",   # eager imports for the public API + __getattr__ fallback
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pronoms"]
+
+[tool.ruff.format]
+# Default: black-compatible style.
+
+# ---------------------------------------------------------------------------
+# Mypy -- static type checking
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.9"
+files = ["src/pronoms"]
+# Pragmatic strictness: catches real bugs without forcing full-suite annotations.
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+no_implicit_optional = true
+strict_equality = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+
+# Third-party packages without inline types -- silence missing-stub noise.
+[[tool.mypy.overrides]]
+module = [
+    "rpy2.*",
+    "directlfq.*",
+    "scipy.*",
+    "matplotlib.*",
+    "seaborn.*",
+    "statsmodels.*",
+    "sklearn.*",
+]
+ignore_missing_imports = true

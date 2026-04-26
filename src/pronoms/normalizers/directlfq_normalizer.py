@@ -6,19 +6,18 @@ using the directlfq library.
 
 """
 
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import tempfile
-import os
+from typing import Optional
+
 import directlfq.config as dlcfg
-import directlfq.utils   as dlu
 import directlfq.normalization as dlnorm
 import directlfq.protein_intensity_estimation as dlprot
-from typing import Optional, List, Tuple
+import directlfq.utils as dlu
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-from ..utils.validators import validate_input_data, check_nan_inf
 from ..utils.plotting import create_hexbin_comparison
+from ..utils.validators import validate_input_data
 
 
 class DirectLFQNormalizer:
@@ -61,12 +60,15 @@ class DirectLFQNormalizer:
     num_cores : Optional[int]
         Number of cores used by directlfq.
     """
-    def __init__(self,
-                 do_between_sample_norm: bool = True,
-                 n_quad_samples: int = 50,
-                 n_quad_ions: int = 10,
-                 min_nonan: int = 1,
-                 num_cores: int | None = None):
+
+    def __init__(
+        self,
+        do_between_sample_norm: bool = True,
+        n_quad_samples: int = 50,
+        n_quad_ions: int = 10,
+        min_nonan: int = 1,
+        num_cores: Optional[int] = None,
+    ):
         self.do_between_sample_norm = do_between_sample_norm
         self.n_quad_samples = n_quad_samples
         self.n_quad_ions = n_quad_ions
@@ -132,12 +134,8 @@ class DirectLFQNormalizer:
 
         # ----------------- Construct DataFrame ---------------
         n_samples, _ = X.shape
-        sample_cols = [f"sample_{i+1}" for i in range(n_samples)]
-        df = pd.DataFrame({
-            "protein": proteins,
-            "ion": peptides,
-            **{sample_cols[i]: X[i, :] for i in range(n_samples)}
-        })
+        sample_cols = [f"sample_{i + 1}" for i in range(n_samples)]
+        df = pd.DataFrame({"protein": proteins, "ion": peptides, **{sample_cols[i]: X[i, :] for i in range(n_samples)}})
 
         # ----------------- DirectLFQ Configuration -----------
         dlcfg.set_global_protein_and_ion_id(protein_id="protein", quant_id="ion")
@@ -177,11 +175,11 @@ class DirectLFQNormalizer:
 
         # ----------------- Drop ID columns -------------------
         prot_numeric = prot_df.drop(columns=["protein"], errors="ignore")
-        ion_numeric  = ion_df.drop(columns=["protein", "ion"], errors="ignore")
+        ion_numeric = ion_df.drop(columns=["protein", "ion"], errors="ignore")
 
         # ----------------- To NumPy --------------------------
         protein_matrix = prot_numeric.T.to_numpy(dtype=np.float64, copy=False)
-        ion_matrix     = ion_numeric.T.to_numpy(dtype=np.float64, copy=False)
+        ion_matrix = ion_numeric.T.to_numpy(dtype=np.float64, copy=False)
 
         # ----------------- Sanity check ----------------------
         if ion_matrix.shape[1] != peptide_ids.shape[0]:
@@ -189,9 +187,13 @@ class DirectLFQNormalizer:
 
         return protein_matrix, ion_matrix, protein_ids, peptide_ids
 
-    def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray,
-                       figsize: Tuple[int, int] = (10, 8),
-                       title: str = "DirectLFQ Protein Normalization Comparison") -> plt.Figure:
+    def plot_comparison(
+        self,
+        before_data: np.ndarray,
+        after_data: np.ndarray,
+        figsize: tuple[int, int] = (10, 8),
+        title: str = "DirectLFQ Protein Normalization Comparison",
+    ) -> plt.Figure:
         """
         Plot protein data before vs after DirectLFQ normalization using a hexbin plot.
 
@@ -222,7 +224,11 @@ class DirectLFQNormalizer:
         after_data = validate_input_data(after_data)
 
         if before_data.shape != after_data.shape:
-             print(f"Warning: Shape mismatch in plot_comparison: before={before_data.shape}, after={after_data.shape}. Plotting may be misleading.")
+            print(
+                "Warning: Shape mismatch in plot_comparison: "
+                f"before={before_data.shape}, after={after_data.shape}. "
+                "Plotting may be misleading."
+            )
 
         # Create hexbin comparison plot
         fig = create_hexbin_comparison(
@@ -231,7 +237,7 @@ class DirectLFQNormalizer:
             figsize=figsize,
             title=title,
             xlabel="Before DirectLFQ (Protein Intensity)",
-            ylabel="After DirectLFQ (Protein Intensity)"
+            ylabel="After DirectLFQ (Protein Intensity)",
         )
 
         return fig

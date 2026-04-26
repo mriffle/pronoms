@@ -1,9 +1,10 @@
-import numpy as np
-from typing import Optional, Tuple
-import matplotlib.pyplot as plt
+from typing import Optional
 
-from ..utils.validators import validate_input_data, check_nan_inf
-from ..utils.plotting import create_hexbin_comparison
+import matplotlib.pyplot as plt
+import numpy as np
+
+from ..utils.validators import check_nan_inf, validate_input_data
+
 
 class MedianPolishNormalizer:
     """
@@ -42,7 +43,14 @@ class MedianPolishNormalizer:
     iterations_run : Optional[int]
         Number of iterations actually performed. Available after normalize().
     """
-    def __init__(self, max_iterations: int = 10, tolerance: float = 0.01, epsilon: float = 1e-6, log_transform: bool = True):
+
+    def __init__(
+        self,
+        max_iterations: int = 10,
+        tolerance: float = 0.01,
+        epsilon: float = 1e-6,
+        log_transform: bool = True,
+    ):
         """
         Initialize the MedianPolishNormalizer.
 
@@ -64,7 +72,7 @@ class MedianPolishNormalizer:
         if not isinstance(tolerance, (int, float)) or tolerance < 0:
             raise ValueError("tolerance must be a non-negative number")
         if not isinstance(epsilon, (int, float)) or epsilon < 0:
-             raise ValueError("epsilon must be a non-negative number")
+            raise ValueError("epsilon must be a non-negative number")
         if not isinstance(log_transform, bool):
             raise ValueError("log_transform must be a boolean")
 
@@ -103,10 +111,7 @@ class MedianPolishNormalizer:
         X = validate_input_data(X)
 
         # log / shift handling ------------------------------------------------
-        if self.log_transform:
-            Xp = np.log(X + self.epsilon)
-        else:
-            Xp = X.copy()
+        Xp = np.log(X + self.epsilon) if self.log_transform else X.copy()
 
         # second sanity check
         has_nan_inf, _ = check_nan_inf(Xp)
@@ -117,21 +122,26 @@ class MedianPolishNormalizer:
         # initialise effects --------------------------------------------------
         self.row_effects = np.zeros(n_rows)
         self.col_effects = np.zeros(n_cols)
-        self.overall_median = 0.0
+        # Local accumulator keeps mypy happy (Optional[float] on the attribute
+        # only widens at the end). The value is also assigned to
+        # ``self.overall_median`` after the loop completes.
+        overall_median: float = 0.0
         resid = Xp.copy()
 
         # iterative polish ----------------------------------------------------
         self.converged = False
-        for it in range(self.max_iterations):
+        iterations_run = 0
+        for _ in range(self.max_iterations):
+            iterations_run += 1
             # ----- row step --------------------------------------------------
             row_med = np.median(resid, axis=1)
             resid -= row_med[:, None]
             self.row_effects += row_med
 
             # centre row effects and update overall
-            rm = np.median(self.row_effects)
+            rm = float(np.median(self.row_effects))
             self.row_effects -= rm
-            self.overall_median += rm
+            overall_median += rm
 
             # ----- column step ----------------------------------------------
             col_med = np.median(resid, axis=0)
@@ -139,9 +149,9 @@ class MedianPolishNormalizer:
             self.col_effects += col_med
 
             # centre column effects and update overall
-            cm = np.median(self.col_effects)
+            cm = float(np.median(self.col_effects))
             self.col_effects -= cm
-            self.overall_median += cm
+            overall_median += cm
 
             # ----- convergence check ----------------------------------------
             max_change = max(np.abs(row_med).max(), np.abs(col_med).max())
@@ -149,15 +159,21 @@ class MedianPolishNormalizer:
                 self.converged = True
                 break
 
-        self.iterations_run = it + 1
+        self.iterations_run = iterations_run
+        self.overall_median = overall_median
 
         # store residuals
         self.residuals = resid
 
         # return log-space normalized matrix
-        return self.overall_median + resid
+        return overall_median + resid
 
-    def plot_comparison(self, original_data: np.ndarray, normalized_data: np.ndarray, figsize: Tuple[int, int] = (10, 8)) -> plt.Figure:
+    def plot_comparison(
+        self,
+        original_data: np.ndarray,
+        normalized_data: np.ndarray,
+        figsize: tuple[int, int] = (10, 8),
+    ) -> plt.Figure:
         """
         Generate a hexbin plot comparing original data (log scale) vs. normalized data.
 
@@ -192,15 +208,15 @@ class MedianPolishNormalizer:
         y_filtered = y_flat[valid_indices]
 
         if len(x_filtered) == 0:
-            ax.text(0.5, 0.5, "No positive data to plot on log scale", ha='center', va='center')
+            ax.text(0.5, 0.5, "No positive data to plot on log scale", ha="center", va="center")
             ax.set_title("Median Polish Normalization Comparison")
             ax.set_xlabel("Original Data (Log Scale)")
             ax.set_ylabel("Normalized Data")
             return fig
 
         # Create hexbin plot
-        hb = ax.hexbin(x_filtered, y_filtered, gridsize=50, cmap='viridis', xscale='log')
-        fig.colorbar(hb, ax=ax, label='Count in bin')
+        hb = ax.hexbin(x_filtered, y_filtered, gridsize=50, cmap="viridis", xscale="log")
+        fig.colorbar(hb, ax=ax, label="Count in bin")
 
         # Add diagonal line (transformed appropriately if y is log-scale)
         # Determine if y is likely log-scale (heuristic: if log_transform was True)
@@ -208,13 +224,15 @@ class MedianPolishNormalizer:
             # If y is log, plot log(x) vs y
             min_val = np.log(x_filtered.min())
             max_val = np.log(x_filtered.max())
-            ax.plot([min_val, max_val], [min_val, max_val], color='red', linestyle='--', linewidth=1, label='y = log(x)')
+            ax.plot(
+                [min_val, max_val], [min_val, max_val], color="red", linestyle="--", linewidth=1, label="y = log(x)"
+            )
             ax.set_ylabel("Normalized Data (Log Scale)")
         else:
             # If y is original scale, plot x vs y
             min_val = x_filtered.min()
             max_val = x_filtered.max()
-            ax.plot([min_val, max_val], [min_val, max_val], color='red', linestyle='--', linewidth=1, label='y = x')
+            ax.plot([min_val, max_val], [min_val, max_val], color="red", linestyle="--", linewidth=1, label="y = x")
             ax.set_ylabel("Normalized Data")
 
         ax.set_title("Median Polish Normalization Comparison")

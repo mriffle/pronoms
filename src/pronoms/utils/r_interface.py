@@ -10,20 +10,23 @@ from __future__ import annotations
 import os
 import tempfile
 import warnings
-from typing import Optional, Dict, Any, List
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 
 # rpy2 is imported lazily to avoid import-time crashes and to allow environments
 # without rpy2 to import this module for non-R functionality.
+if TYPE_CHECKING:  # type-only imports; never executed at runtime
+    import rpy2.robjects as robjects
 
 _R_INITIALIZED = False
-HAS_RPY2: Optional[bool] = None  # None = not checked yet
+HAS_RPY2: bool | None = None  # None = not checked yet
 
 
 class RInterfaceError(Exception):
     """Exception raised for errors in the R interface."""
+
     pass
 
 
@@ -38,8 +41,9 @@ def _import_rpy2() -> bool:
         return HAS_RPY2
 
     try:
-        import rpy2  # noqa: F401
+        import rpy2
         import rpy2.robjects  # noqa: F401
+
         HAS_RPY2 = True
     except ImportError:
         HAS_RPY2 = False
@@ -77,7 +81,9 @@ def check_r_availability() -> bool:
             # on first robjects use. We don't force it here unless needed.
             pass
         elif hasattr(embedded, "initialize") and not _R_INITIALIZED:
-            embedded.set_initoptions(("--vanilla", "--quiet", "--no-save"))
+            # rpy2's stubs declare a 1-tuple but the implementation accepts any
+            # tuple of CLI flags; cast to keep mypy happy without a runtime cast.
+            embedded.set_initoptions(("--vanilla", "--quiet", "--no-save"))  # type: ignore[arg-type]
             embedded.initialize()
 
         _R_INITIALIZED = True
@@ -108,10 +114,11 @@ def check_r_package(package_name: str) -> bool:
     check_r_availability()
 
     from rpy2.robjects.packages import isinstalled
+
     return isinstalled(package_name)
 
 
-def setup_r_environment(required_packages: List[str]) -> None:
+def setup_r_environment(required_packages: list[str]) -> None:
     """
     Set up the R environment by checking required packages.
 
@@ -134,7 +141,7 @@ def setup_r_environment(required_packages: List[str]) -> None:
         cran_packages = [p for p in missing_packages if p not in bioc_packages]
         bioc_missing = [p for p in missing_packages if p in bioc_packages]
 
-        instructions: List[str] = []
+        instructions: list[str] = []
         if cran_packages:
             pkg_str = ", ".join(f'"{p}"' for p in cran_packages)
             instructions.append(f"install.packages(c({pkg_str}))")
@@ -155,9 +162,9 @@ def setup_r_environment(required_packages: List[str]) -> None:
 
 def convert_to_r_matrix(
     data: np.ndarray,
-    row_names: Optional[List[str]] = None,
-    col_names: Optional[List[str]] = None,
-) -> "robjects.Matrix":
+    row_names: list[str] | None = None,
+    col_names: list[str] | None = None,
+) -> robjects.Matrix:
     """
     Convert a numpy array to an R matrix.
 
@@ -197,7 +204,7 @@ def convert_to_r_matrix(
             try:
                 robjects.r["rownames<-"](r_matrix, StrVector(row_names))
             except Exception as e:
-                warnings.warn(f"Could not set row names: {e}")
+                warnings.warn(f"Could not set row names: {e}", stacklevel=2)
 
     if col_names is not None:
         try:
@@ -206,12 +213,12 @@ def convert_to_r_matrix(
             try:
                 robjects.r["colnames<-"](r_matrix, StrVector(col_names))
             except Exception as e:
-                warnings.warn(f"Could not set column names: {e}")
+                warnings.warn(f"Could not set column names: {e}", stacklevel=2)
 
     return r_matrix
 
 
-def convert_from_r_matrix(r_matrix: "robjects.Matrix") -> np.ndarray:
+def convert_from_r_matrix(r_matrix: robjects.Matrix) -> np.ndarray:
     """
     Convert an R matrix to a numpy array.
 
@@ -239,10 +246,10 @@ def convert_from_r_matrix(r_matrix: "robjects.Matrix") -> np.ndarray:
 
 def run_r_script(
     script: str,
-    data: Optional[np.ndarray] = None,
-    row_names: Optional[List[str]] = None,
-    col_names: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+    data: np.ndarray | None = None,
+    row_names: list[str] | None = None,
+    col_names: list[str] | None = None,
+) -> dict[str, Any]:
     """
     Run an R script with optional input matrix and return selected results.
 
@@ -285,7 +292,7 @@ def run_r_script(
         robjects.r.source(script_path)
 
         # Collect results if present
-        results: Dict[str, Any] = {}
+        results: dict[str, Any] = {}
 
         if bool(robjects.r("exists('normalized_data')")[0]):
             results["normalized_data"] = convert_from_r_matrix(robjects.r("normalized_data"))
@@ -309,7 +316,8 @@ def run_r_script(
 
 # ---------- OPTIONAL: Pandas <-> R data.frame helpers (no global activation) ----------
 
-def pandas_to_r_df(df: pd.DataFrame):
+
+def pandas_to_r_df(df: pd.DataFrame) -> Any:
     """
     Convert a pandas DataFrame to an R data.frame using a local conversion context.
     """
@@ -321,7 +329,7 @@ def pandas_to_r_df(df: pd.DataFrame):
         return pandas2ri.py2rpy(df)
 
 
-def r_df_to_pandas(r_obj) -> pd.DataFrame:
+def r_df_to_pandas(r_obj: Any) -> pd.DataFrame:
     """
     Convert an R data.frame to a pandas DataFrame using a local conversion context.
     """

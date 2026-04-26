@@ -4,34 +4,33 @@ Median Normalizer for proteomics data.
 This module provides a class for median normalization of proteomics data.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Tuple
+import numpy as np
 
-from ..utils.validators import validate_input_data, check_nan_inf
 from ..utils.plotting import create_hexbin_comparison
+from ..utils.validators import check_nan_inf, validate_input_data
 
 
 class MedianNormalizer:
     """
     Normalizer that scales each sample by its median.
-    
+
     This normalizer adjusts each sample (column) in the data matrix by dividing
     by the median value of that sample, effectively centering the distribution
     of each sample around a median of 1.0.
-    
+
     Attributes
     ----------
     scaling_factors : Optional[np.ndarray]
         Scaling factors used for normalization (median of each sample).
         Only available after calling normalize().
     """
-    
+
     def __init__(self):
         """Initialize the MedianNormalizer."""
         self.scaling_factors = None
         self.mean_of_medians = None
-    
+
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """
         Perform median normalization on input data X.
@@ -64,9 +63,7 @@ class MedianNormalizer:
         # Check for NaN or Inf values
         has_nan_inf, _ = check_nan_inf(X)
         if has_nan_inf:
-            raise ValueError(
-                "Input data contains NaN or Inf values. Please handle these values before normalization."
-            )
+            raise ValueError("Input data contains NaN or Inf values. Please handle these values before normalization.")
 
         # Compute per-sample medians
         medians = np.median(X, axis=1)
@@ -85,14 +82,18 @@ class MedianNormalizer:
         normalized_data = (X / medians) * mean_of_medians
 
         return normalized_data
-    
-    def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
-                       figsize: Tuple[int, int] = (10, 8),
-                       title: str = "Median Normalization Comparison",
-                       log_axes: bool = True) -> plt.Figure:
+
+    def plot_comparison(
+        self,
+        before_data: np.ndarray,
+        after_data: np.ndarray,
+        figsize: tuple[int, int] = (10, 8),
+        title: str = "Median Normalization Comparison",
+        log_axes: bool = True,
+    ) -> plt.Figure:
         """
         Plot data before vs after normalization using a 2D hexbin density plot.
-        
+
         Parameters
         ----------
         before_data : np.ndarray
@@ -105,7 +106,7 @@ class MedianNormalizer:
             Plot title, by default "Median Normalization Comparison".
         log_axes : bool, optional
             If True (default), plot log10 of the values on both axes. If False, plot raw values.
-        
+
         Returns
         -------
         plt.Figure
@@ -114,7 +115,7 @@ class MedianNormalizer:
         # Validate input data
         before_data = validate_input_data(before_data)
         after_data = validate_input_data(after_data)
-        
+
         # Create hexbin comparison plot
         fig = create_hexbin_comparison(
             before_data,
@@ -123,7 +124,7 @@ class MedianNormalizer:
             title=title,
             xlabel="Before Median Normalization",
             ylabel="After Median Normalization",
-            log_axes=log_axes
+            log_axes=log_axes,
         )
-        
+
         return fig

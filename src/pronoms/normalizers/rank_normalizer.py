@@ -4,23 +4,22 @@ Rank Normalizer for proteomics data.
 This module provides a class for rank transformation normalization of proteomics data.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, Tuple
+import numpy as np
 from scipy.stats import rankdata
 
-from ..utils.validators import validate_input_data, check_nan_inf
 from ..utils.plotting import create_hexbin_comparison
+from ..utils.validators import check_nan_inf, validate_input_data
 
 
 class RankNormalizer:
     """
     Normalizer that transforms each sample's values to their ranks.
-    
+
     This normalizer replaces each value in a sample with its rank, where the
     smallest value gets rank 1 and the largest gets rank N (number of features).
     Tied values are assigned the median rank of their group.
-    
+
     Attributes
     ----------
     normalize_by_n : bool
@@ -28,11 +27,11 @@ class RankNormalizer:
     ranks : Optional[np.ndarray]
         The rank-transformed data. Only available after calling normalize().
     """
-    
+
     def __init__(self, normalize_by_n: bool = False):
         """
         Initialize the RankNormalizer.
-        
+
         Parameters
         ----------
         normalize_by_n : bool, optional
@@ -42,7 +41,7 @@ class RankNormalizer:
         """
         self.normalize_by_n = normalize_by_n
         self.ranks = None
-    
+
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """
         Perform rank transformation on input data X.
@@ -75,9 +74,7 @@ class RankNormalizer:
         # Check for NaN or Inf values
         has_nan_inf, _ = check_nan_inf(X)
         if has_nan_inf:
-            raise ValueError(
-                "Input data contains NaN or Inf values. Please handle these values before normalization."
-            )
+            raise ValueError("Input data contains NaN or Inf values. Please handle these values before normalization.")
 
         n_samples, n_features = X.shape
         rank_data = np.zeros_like(X, dtype=float)
@@ -86,26 +83,30 @@ class RankNormalizer:
         for i in range(n_samples):
             # Use scipy.stats.rankdata with method='average' for median rank of ties
             # This automatically handles tied values by assigning the average rank
-            sample_ranks = rankdata(X[i, :], method='average')
-            
+            sample_ranks = rankdata(X[i, :], method="average")
+
             if self.normalize_by_n:
                 # Normalize ranks to [1/N, 1] range
                 sample_ranks = sample_ranks / n_features
-            
+
             rank_data[i, :] = sample_ranks
 
         # Store the transformed data
         self.ranks = rank_data.copy()
 
         return rank_data
-    
-    def plot_comparison(self, before_data: np.ndarray, after_data: np.ndarray, 
-                       figsize: Tuple[int, int] = (10, 8),
-                       title: str = "Rank Normalization Comparison",
-                       log_axes: bool = False) -> plt.Figure:
+
+    def plot_comparison(
+        self,
+        before_data: np.ndarray,
+        after_data: np.ndarray,
+        figsize: tuple[int, int] = (10, 8),
+        title: str = "Rank Normalization Comparison",
+        log_axes: bool = False,
+    ) -> plt.Figure:
         """
         Plot data before vs after normalization using a 2D hexbin density plot.
-        
+
         Parameters
         ----------
         before_data : np.ndarray
@@ -117,11 +118,11 @@ class RankNormalizer:
         title : str, optional
             Plot title, by default "Rank Normalization Comparison".
         log_axes : bool, optional
-            If True, plot log10 of the original values on the x-axis. If False (default), 
-            plot raw original values on the x-axis. The y-axis always shows the 
+            If True, plot log10 of the original values on the x-axis. If False (default),
+            plot raw original values on the x-axis. The y-axis always shows the
             actual rank values from the normalization. Log scaling of x-axis can help
             visualize data with wide dynamic ranges.
-        
+
         Returns
         -------
         plt.Figure
@@ -135,24 +136,27 @@ class RankNormalizer:
         if log_axes:
             # Log-transform the original data for the x-axis
             # Add 1 to handle zero values before taking the log
-            with np.errstate(divide='ignore', invalid='ignore'):
+            with np.errstate(divide="ignore", invalid="ignore"):
                 x_data = np.log10(before_data + 1)
             xlabel = "Log10(Original Value + 1)"
-            
+
             # Find min/max of log-transformed data for x-axis range
-            x_min, x_max = np.min(x_data[np.isfinite(x_data)]), np.max(x_data[np.isfinite(x_data)])
+            finite = x_data[np.isfinite(x_data)]
+            x_min = float(np.min(finite))
+            x_max = float(np.max(finite))
         else:
             # Use raw original data for the x-axis
             x_data = before_data
             xlabel = "Original Value"
-            
+
             # Find min/max of raw data for x-axis range
-            x_min, x_max = np.min(x_data), np.max(x_data)
-        
+            x_min = float(np.min(x_data))
+            x_max = float(np.max(x_data))
+
         # Add padding to x-axis range
         padding = (x_max - x_min) * 0.05  # 5% padding
         xlim = (x_min - padding, x_max + padding)
-        
+
         # Get the number of features (N) for setting y-axis limits
         n_features = before_data.shape[1]
 
@@ -171,5 +175,5 @@ class RankNormalizer:
             xlim=xlim,
             ylim=ylim,
             autoscale_y=True,  # Allow y-axis to use its own scale
-            add_identity_line=False # Identity line is not meaningful here
+            add_identity_line=False,  # Identity line is not meaningful here
         )

@@ -84,7 +84,29 @@ BiocManager::install("vsn")
 ```
 
 ## Development
-- Run tests: `pytest`
+
+Set up a virtual environment and install the dev extras:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+The pre-flight gate before any commit is:
+
+```bash
+pytest                          # full test suite (warnings -> errors)
+ruff check src tests            # lint
+ruff format --check src tests   # formatting (use `ruff format` to apply)
+mypy                            # static type check
+```
+
+Coverage:
+
+```bash
+pytest --cov=src/pronoms --cov-report=term-missing
+```
 
 ## License
 This project is licensed under the Apache License License - see the LICENSE file for details.
