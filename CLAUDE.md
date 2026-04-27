@@ -61,22 +61,13 @@ warning to a test failure -- fix the underlying cause rather than suppressing.
 The pre-flight gate before a commit is **all three of**: `pytest`, `ruff
 check`, `mypy`. Treat any one going red as a blocker.
 
-## R / VSN normalizer
+## VSN normalizer (native Python)
 
-`VSNNormalizer` calls Bioconductor's `vsn` package through `rpy2`. The R dependency is **lazy**: importing `pronoms` or any other normalizer does not require R or rpy2 to be functional. Only constructing or calling `VSNNormalizer` triggers `setup_r_environment(["vsn"])`.
+`VSNNormalizer` is a pure-Python (NumPy/SciPy) port of Bioconductor's `vsn::vsn2`. There is **no R or rpy2 dependency**. The engine lives at `src/pronoms/normalizers/_vsn_engine.py` (private; consumed only by `VSNNormalizer`).
 
-To exercise VSN locally:
+Numerical contract: matches R-VSN's output to ~1e-6 on realistic proteomics-shaped data (e.g. the kidney 8704×2 fixture). On small/hard synthetic inputs scipy's L-BFGS-B and R's lbfgsb may converge to different local optima on the near-flat profile-likelihood surface — that is acknowledged in the per-fixture tolerance table in `tests/test_vsn_normalizer.py`.
 
-```bash
-# Linux: install R + dev headers via the OS package manager (Debian/Ubuntu shown)
-sudo apt install r-base r-base-dev libtirpc-dev   # (asks for sudo — confirm before running)
-
-# Then in R:
-Rscript -e 'if (!require("BiocManager", quietly=TRUE)) install.packages("BiocManager")'
-Rscript -e 'BiocManager::install("vsn")'
-```
-
-CI installs R 4.3 + the `vsn` Bioconductor package and runs the full pytest suite against it (`.github/workflows/ci.yml`). VSN tests must continue to pass on CI.
+Golden fixtures live under `tests/fixtures/vsn/` and are regenerated from R via `tests/fixtures/vsn/generate_golden.R` (requires `Rscript` + the `vsn` Bioconductor package on the regenerator's machine — but the test suite itself never invokes R).
 
 ## Architecture
 
@@ -85,7 +76,9 @@ CI installs R 4.3 + the `vsn` Bioconductor package and runs the full pytest suit
 ```
 src/pronoms/
   normalizers/   # one class per normalization method
-  utils/         # validators, transformations, plotting, R interface
+                 # plus _vsn_engine.py (private native VSN engine)
+  utils/         # validators, transformations, plotting, R interface (legacy,
+                 # kept for any future R-backed normalizers; no live caller today)
 ```
 
 ### The normalizer contract
@@ -106,7 +99,7 @@ Every normalizer follows the same lifecycle, and new ones should too:
 
 - `validators.validate_input_data` / `validators.check_nan_inf` are the canonical input gates — call them, do not duplicate the checks.
 - `plotting.create_hexbin_comparison` is the single source of truth for "before vs. after" hexbin density plots. `plot_comparison_hexbin` is an alias kept for `VSNNormalizer`'s import; don't remove it without a deprecation cycle.
-- `r_interface` is structured so that **`import pronoms.utils.r_interface` never imports `rpy2`**. The `_import_rpy2()` / `check_r_availability()` / `setup_r_environment()` chain defers all rpy2 work until an R-backed normalizer is actually used. `run_r_script()` writes the script to a tempfile, injects `input_data` into R's global env, runs `source()`, and pulls back any of `normalized_data` / `stats` / `parameters` / `diagnostics` that the script defines. Mirror that contract when adding new R-backed normalizers.
+- `r_interface` is **legacy** — no normalizer in pronoms currently calls into R. It is structured so that `import pronoms.utils.r_interface` never imports `rpy2`; the `_import_rpy2()` / `check_r_availability()` / `setup_r_environment()` chain defers all rpy2 work until an R-backed normalizer is actually used. If you add a future R-backed normalizer, mirror that contract — but new normalizers should default to native Python implementations.
 
 ### Tests
 
@@ -117,9 +110,11 @@ Layout under `tests/`:
 - `test_<normalizer>.py` -- one file per normalizer in `src/pronoms/normalizers`.
 - `test_validators.py`, `test_transformations.py`, `test_plotting.py` --
   cover the helpers in `src/pronoms/utils`.
-- `test_r_interface.py` -- pure-Python branches of the rpy2 wrapper (the live
+- `test_r_interface.py` -- pure-Python branches of the (legacy) rpy2 wrapper (the live
   rpy2/R-bound tests skip themselves automatically when rpy2 cannot init R).
 - `test_lazy_imports.py` -- `pronoms.normalizers.__getattr__` / `__dir__`.
+- `tests/fixtures/vsn/` -- golden CSVs captured from R-VSN; regenerate with
+  `Rscript generate_golden.R` if the algorithm or default parameters change.
 
 Conventions for a new test file:
 
@@ -134,14 +129,14 @@ Conventions for a new test file:
    `vsn_params` attributes a normalizer sets after `normalize()`).
 5. **Real-call plotting tests** preferred over mock-the-helper tests: they
    exercise the actual matplotlib plumbing too. Mock only when constructing
-   real inputs would be more work than the test is worth (e.g. R-backed VSN).
+   real inputs would be more work than the test is worth.
 6. **Do not write fluff tests** to chase coverage. Defensive guards that are
    structurally unreachable (e.g. shape sanity checks downstream of a
    validator that already enforced shape) are acceptable to leave uncovered.
 
-For R/directlfq normalizers, include both a mocked unit test (driver
-behavior) **and** a small real-end-to-end smoke test (catches regressions in
-the actual third-party library).
+For directlfq, include both a mocked unit test (driver behavior) **and** a
+small real-end-to-end smoke test (catches regressions in the third-party
+library).
 
 ### Documentation
 
