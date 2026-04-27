@@ -4,8 +4,6 @@ Plotting utilities for Pronoms.
 This module provides functions for visualizing proteomics data before and after normalization.
 """
 
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -20,12 +18,12 @@ def create_hexbin_comparison(
     gridsize: int = 50,
     cmap: str = "viridis",
     add_identity_line: bool = True,
-    transform_original: Optional[str] = None,
+    transform_original: str | None = None,
     autoscale_y: bool = False,
     add_center_line_y0: bool = False,
     log_axes: bool = True,
-    xlim: Optional[tuple[float, float]] = None,
-    ylim: Optional[tuple[float, float]] = None,
+    xlim: tuple[float, float] | None = None,
+    ylim: tuple[float, float] | None = None,
 ) -> plt.Figure:
     """
     Create a 2D hexbin density plot comparing values before and after normalization.

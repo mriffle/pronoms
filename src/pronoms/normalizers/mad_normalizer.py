@@ -1,5 +1,4 @@
 import warnings
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -92,8 +91,8 @@ class MADNormalizer:
 
         self.log_transform = log_transform
         self.scale_to_sigma = bool(scale_to_sigma)
-        self.row_medians: Optional[np.ndarray] = None
-        self.row_mads: Optional[np.ndarray] = None
+        self.row_medians: np.ndarray | None = None
+        self.row_mads: np.ndarray | None = None
 
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """

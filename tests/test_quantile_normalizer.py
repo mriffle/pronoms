@@ -56,7 +56,7 @@ def test_within_row_ordering_is_preserved(simple_data):
     normalizer = QuantileNormalizer()
     normalized = normalizer.normalize(simple_data)
 
-    for original_row, normalized_row in zip(simple_data, normalized):
+    for original_row, normalized_row in zip(simple_data, normalized, strict=True):
         assert_allclose(np.argsort(np.argsort(original_row)), np.argsort(np.argsort(normalized_row)))
 
 
@@ -147,7 +147,7 @@ def test_negative_values_are_handled(simple_data):
     normalized = normalizer.normalize(data)
 
     # ordering preserved per row
-    for original_row, normalized_row in zip(data, normalized):
+    for original_row, normalized_row in zip(data, normalized, strict=True):
         assert_allclose(np.argsort(np.argsort(original_row)), np.argsort(np.argsort(normalized_row)))
     # reference still well-defined and produced
     assert normalizer.reference_distribution.shape == (data.shape[1],)

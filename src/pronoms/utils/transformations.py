@@ -4,12 +4,10 @@ Transformation utilities for Pronoms.
 This module provides functions for transforming proteomics data.
 """
 
-from typing import Union
-
 import numpy as np
 
 
-def log_transform(data: np.ndarray, base: Union[int, float, str] = 2, pseudo_count: float = 1.0) -> np.ndarray:
+def log_transform(data: np.ndarray, base: int | float | str = 2, pseudo_count: float = 1.0) -> np.ndarray:
     """
     Apply logarithmic transformation to data.
 

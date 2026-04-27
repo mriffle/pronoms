@@ -1,5 +1,3 @@
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -51,9 +49,9 @@ class SPLMNormalizer:
 
         self.num_stable_proteins = num_stable_proteins
         self.epsilon = epsilon
-        self.stable_protein_indices: Optional[np.ndarray] = None
-        self.log_scaling_factors: Optional[np.ndarray] = None
-        self.grand_mean_log_scaling_factor: Optional[float] = None
+        self.stable_protein_indices: np.ndarray | None = None
+        self.log_scaling_factors: np.ndarray | None = None
+        self.grand_mean_log_scaling_factor: float | None = None
 
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """

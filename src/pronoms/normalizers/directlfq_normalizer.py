@@ -6,8 +6,6 @@ using the directlfq library.
 
 """
 
-from typing import Optional
-
 import directlfq.config as dlcfg
 import directlfq.normalization as dlnorm
 import directlfq.protein_intensity_estimation as dlprot
@@ -67,7 +65,7 @@ class DirectLFQNormalizer:
         n_quad_samples: int = 50,
         n_quad_ions: int = 10,
         min_nonan: int = 1,
-        num_cores: Optional[int] = None,
+        num_cores: int | None = None,
     ):
         self.do_between_sample_norm = do_between_sample_norm
         self.n_quad_samples = n_quad_samples

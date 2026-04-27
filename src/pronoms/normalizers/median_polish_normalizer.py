@@ -1,5 +1,3 @@
-from typing import Optional
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -86,12 +84,12 @@ class MedianPolishNormalizer:
         self.log_transform = log_transform
 
         # Results attributes initialized to None
-        self.row_effects: Optional[np.ndarray] = None
-        self.col_effects: Optional[np.ndarray] = None
-        self.overall_median: Optional[float] = None
-        self.residuals: Optional[np.ndarray] = None
-        self.converged: Optional[bool] = None
-        self.iterations_run: Optional[int] = None
+        self.row_effects: np.ndarray | None = None
+        self.col_effects: np.ndarray | None = None
+        self.overall_median: float | None = None
+        self.residuals: np.ndarray | None = None
+        self.converged: bool | None = None
+        self.iterations_run: int | None = None
 
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """
