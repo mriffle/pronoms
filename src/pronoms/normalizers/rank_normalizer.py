@@ -24,7 +24,7 @@ class RankNormalizer:
     ----------
     normalize_by_n : bool
         Whether to divide ranks by N (number of features) for comparability.
-    ranks : Optional[np.ndarray]
+    ranks : np.ndarray | None
         The rank-transformed data. Only available after calling normalize().
     """
 
@@ -40,7 +40,7 @@ class RankNormalizer:
             with different numbers of features. By default False.
         """
         self.normalize_by_n = normalize_by_n
-        self.ranks = None
+        self.ranks: np.ndarray | None = None
 
     def normalize(self, X: np.ndarray) -> np.ndarray:
         """
