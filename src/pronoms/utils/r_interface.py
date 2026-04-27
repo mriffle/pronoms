@@ -83,7 +83,7 @@ def check_r_availability() -> bool:
         elif hasattr(embedded, "initialize") and not _R_INITIALIZED:
             # rpy2's stubs declare a 1-tuple but the implementation accepts any
             # tuple of CLI flags; cast to keep mypy happy without a runtime cast.
-            embedded.set_initoptions(("--vanilla", "--quiet", "--no-save"))  # type: ignore[arg-type]
+            embedded.set_initoptions(("--vanilla", "--quiet", "--no-save"))  # type: ignore[arg-type, unused-ignore]
             embedded.initialize()
 
         _R_INITIALIZED = True
