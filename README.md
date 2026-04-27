@@ -5,7 +5,7 @@
 # Pronoms: Proteomics Normalization Python Library
 
 ## Overview
-Pronoms is a Python library implementing multiple normalization methods for quantitative proteomics data. Each normalization method is encapsulated within modular, reusable classes. The library includes visualization capabilities that allow users to easily observe the effects of normalization. Some normalization methods, such as VSN normalization, leverage R on the backend for computation.
+Pronoms is a Python library implementing multiple normalization methods for quantitative proteomics data. Each normalization method is encapsulated within modular, reusable classes. The library includes visualization capabilities that allow users to easily observe the effects of normalization. All normalization methods are implemented in pure Python (NumPy/SciPy/pandas); pronoms has no R or rpy2 dependency.
 
 ## Documentation
 See https://pronoms.readthedocs.io/ for complete documentation.
@@ -20,9 +20,7 @@ pip install pronoms
 
 ### Prerequisites
 - Python 3.9 or higher
-- For R-based normalizers (VSN):
-  - R installed on your system
-  - Required R packages: `vsn`
+- No R / rpy2 install required.
 
 ### Installing for Development
 ```bash
@@ -61,7 +59,7 @@ normalizer.plot_comparison(data, normalized_data)
 *   **QuantileNormalizer**: Normalizes samples to have the same distribution using quantile mapping.
 *   **RankNormalizer**: Transforms each sample's values to their ranks (1 to N), with tied values receiving the median rank. Optionally normalizes ranks by dividing by N for cross-dataset comparability.
 *   **SPLMNormalizer**: Stable Protein Log-Mean Normalization. Uses stably expressed proteins (lowest linear-space CV, ``std/mean``) to derive scaling factors for normalization in log-space, then transforms back.
-*   **VSNNormalizer**: Variance Stabilizing Normalization (via R's `vsn` package). Stabilizes variance across the intensity range. **Huber W, von Heydebreck A, Sültmann H, Poustka A, Vingron M.** Variance stabilization applied to microarray data calibration and to the quantification of differential expression. *Bioinformatics*. 2002;18 Suppl 1:S96–104. [doi:10.1093/bioinformatics/18.suppl_1.s96](https://doi.org/10.1093/bioinformatics/18.suppl_1.s96). [PMID: 12169536](https://pubmed.ncbi.nlm.nih.gov/12169536/)
+*   **VSNNormalizer**: Variance Stabilizing Normalization. Native NumPy/SciPy implementation of Huber et al.'s arcsinh-based variance-stabilizing transform with LTS-robust parameter estimation; matches Bioconductor's `vsn` package output to ~1e-6 on realistic proteomics data. **Huber W, von Heydebreck A, Sültmann H, Poustka A, Vingron M.** Variance stabilization applied to microarray data calibration and to the quantification of differential expression. *Bioinformatics*. 2002;18 Suppl 1:S96–104. [doi:10.1093/bioinformatics/18.suppl_1.s96](https://doi.org/10.1093/bioinformatics/18.suppl_1.s96). [PMID: 12169536](https://pubmed.ncbi.nlm.nih.gov/12169536/)
 
 ### Data Format
 All normalizers expect data in the format of a 2D numpy array or pandas DataFrame with shape `(n_samples, n_features)` where:
@@ -69,19 +67,6 @@ All normalizers expect data in the format of a 2D numpy array or pandas DataFram
 - Each **column** represents a protein/feature
 
 This follows the standard convention used in scikit-learn and other Python data science libraries.
-
-## R Integration
-For normalizers that use R (VSN), ensure R is properly installed and accessible. The library uses `rpy2` to interface with R.
-
-### Installing Required R Packages
-The VSN package is part of Bioconductor. In R, run the following commands:
-
-```R
-if (!require("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-
-BiocManager::install("vsn")
-```
 
 ## Development
 

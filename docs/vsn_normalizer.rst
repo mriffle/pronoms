@@ -1,7 +1,9 @@
 VSNNormalizer
 =============
 
-The ``VSNNormalizer`` performs Variance Stabilizing Normalization (VSN) using the R ``vsn`` package from Bioconductor. This method applies a data-driven transformation that stabilizes the variance across the full range of intensities, making downstream statistical analyses more reliable and robust to intensity-dependent noise.
+The ``VSNNormalizer`` performs Variance Stabilizing Normalization (VSN). It applies a data-driven arcsinh transformation that flattens variance across the full intensity range, making downstream statistical analyses more reliable and robust to intensity-dependent noise.
+
+As of version 0.2, ``VSNNormalizer`` is implemented in **pure Python** (NumPy + SciPy). The previous R/rpy2 backend has been removed; an R installation is no longer required to use this normalizer.
 
 Overview
 --------
@@ -10,44 +12,59 @@ Variance Stabilizing Normalization addresses a common problem in high-throughput
 
 VSN works by:
 
-1. **Learning transformation parameters**: Fitting an arcsinh transformation with data-driven parameters
-2. **Applying transformation**: Converting data to a scale where variance is approximately constant
-3. **Calibrating across samples**: Ensuring comparable scales between samples
-
-This approach is particularly effective for:
-
-- Proteomics data with intensity-dependent variance
-- Microarray expression data
-- Any high-throughput data where variance scales with intensity
-- Preprocessing for statistical methods that assume homoscedasticity
+1. **Learning transformation parameters**: per-sample offset ``a_j`` and log-scale-factor ``beta_j`` are estimated by maximum profile likelihood.
+2. **Applying transformation**: ``h_ij = arsinh(exp(beta_j) * y_ij + a_j)``, which behaves like ``log(y_ij)`` for large positive ``y_ij`` and is well-defined for zero or negative inputs.
+3. **Calibrating across samples**: parameters are estimated jointly so per-sample intensities become comparable.
+4. **Robust subset selection**: a least-trimmed-squares (LTS) iteration trims a configurable upper quantile of high-residual rows from each intensity slice, so the fit is not dominated by outliers.
 
 Key Features
 ------------
 
-- **Variance stabilization**: Makes variance approximately constant across intensity ranges
-- **Data-driven**: Parameters are learned from the data, not predetermined
-- **Cross-sample calibration**: Ensures samples are on comparable scales
-- **Robust transformation**: Uses arcsinh-based transformation that handles zero and negative values
-- **R integration**: Leverages the mature ``vsn`` Bioconductor package
+- **Variance stabilization**: variance becomes approximately constant across intensity ranges.
+- **Data-driven**: parameters are learned from the data, not predetermined.
+- **Cross-sample calibration**: per-sample affine pre-transform aligns scales.
+- **Robust fitting**: LTS reweighting suppresses the influence of outlier features.
+- **No R dependency**: native NumPy/SciPy; no rpy2, no R install required.
+- **Vectorized**: closed-form analytic gradient and fully vectorized objective; uses SciPy's L-BFGS-B.
 
 Algorithm Details
 -----------------
 
-VSN applies an arcsinh-based transformation with the form:
+The model is
 
 .. math::
 
-   h(x) = \text{arcsinh}(a + b \cdot x)
+   h_{ij} = \mathrm{arsinh}(b_j \cdot y_{ij} + a_j), \quad b_j = \exp(\beta_j) > 0
 
-where parameters ``a`` and ``b`` are estimated from the data to achieve variance stabilization.
+where :math:`y_{ij}` is the raw intensity for feature *i* in sample *j*. ``a_j`` (offset) and ``β_j`` (log-scaling-factor) are per-sample parameters; ``β`` is parametrized in log-space to keep ``b_j`` strictly positive.
 
-The algorithm:
+Fitting minimizes the negative profile log-likelihood
 
-1. **Parameter estimation**: Uses maximum likelihood to estimate transformation parameters
-2. **Transformation**: Applies the learned transformation to stabilize variance
-3. **Calibration**: Adjusts samples to have comparable scales
+.. math::
 
-The ``vsn`` package uses robust methods to handle outliers and missing values during parameter estimation.
+   \mathcal{L}(\theta) = \frac{n_t}{2}\,\log(2\pi\sigma^2) + \frac{1}{2}\sum_{i,j} \log(1 + Y_{ij}^2) - n_{\mathrm{features}} \sum_j \beta_j
+
+where :math:`Y_{ij} = b_j y_{ij} + a_j`, the per-feature mean ``μ_i`` and the variance ``σ²`` are profiled out (closed-form), and ``n_t`` is the total number of (feature, sample) cells.
+
+The robust LTS step then iterates:
+
+1. Apply the current ``(a, β)`` to all features.
+2. Compute the per-feature residual variance over samples.
+3. Slice features into 5 intensity bins by rank of the per-feature mean.
+4. Within each bin, keep features whose residual variance is below the ``lts_quantile`` percentile (and always keep the lowest-intensity slice in full).
+5. Refit on this subset, warm-starting from the previous parameters.
+
+Up to 7 LTS iterations are performed (matches R-VSN). The final transform is converted to a log2-comparable scale via
+
+.. math::
+
+   h_{ij}^{\log_2} = \frac{\mathrm{arsinh}(b_j y_{ij} + a_j)}{\ln 2} - h_{\mathrm{offset}}, \quad
+   h_{\mathrm{offset}} = \log_2\!\big(2 \exp(\overline{\beta_j})\big).
+
+Numerical agreement with R-VSN
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The native engine matches the Bioconductor ``vsn`` package's ``vsn2`` output to ~1e-6 (and ``a``/``β`` parameters to ~1e-6) on realistic proteomics-shaped inputs (e.g. the canonical kidney 8704×2 dataset). On smaller, harder synthetic inputs, scipy's L-BFGS-B and R's ``lbfgsb`` may converge to slightly different local optima on the near-flat profile-likelihood surface; the resulting outputs typically agree within a few times 0.01 on the log2 scale, which is well within the noise of any reasonable downstream analysis.
 
 Parameters
 ----------
@@ -60,40 +77,32 @@ Parameters
 Usage Example
 -------------
 
-Basic VSN normalization:
-
 .. code-block:: python
 
    import numpy as np
    from pronoms.normalizers import VSNNormalizer
-   
-   # Create sample data with intensity-dependent variance
-   np.random.seed(42)
+
+   rng = np.random.default_rng(42)
    data = np.array([
-       np.random.normal([100, 1000, 10000], [10, 100, 1000]),  # Sample 1
-       np.random.normal([120, 1200, 12000], [12, 120, 1200]),  # Sample 2
-       np.random.normal([80, 800, 8000], [8, 80, 800])         # Sample 3
+       rng.normal([100, 1000, 10000], [10, 100, 1000]),   # Sample 1
+       rng.normal([120, 1200, 12000], [12, 120, 1200]),   # Sample 2
+       rng.normal([80,  800,  8000],  [8,  80,  800]),    # Sample 3
    ])
-   
-   # Create and apply normalizer
+
    normalizer = VSNNormalizer()
-   normalized_data = normalizer.normalize(data)
-   
-   print("Original data:")
-   print(data)
-   print("\nVSN normalized data:")
-   print(normalized_data)
-   
-   # Access fitted parameters
-   print("\nVSN parameters:")
-   print(normalizer.vsn_params)
+   normalized = normalizer.normalize(data)
+
+   # Inspect fitted parameters (plain Python dict)
+   params = normalizer.vsn_params
+   print("a:",       params["a"])
+   print("beta:",    params["b_log"])
+   print("sigma^2:", params["sigsq"])
 
 Visualization:
 
 .. code-block:: python
 
-   # Visualize the normalization effect
-   fig = normalizer.plot_comparison(data, normalized_data)
+   fig = normalizer.plot_comparison(data, normalized)
    fig.show()
 
 
@@ -102,60 +111,28 @@ When to Use
 
 VSNNormalizer is particularly useful when:
 
-- **Intensity-dependent variance**: Data shows increasing variance with higher intensities
-- **Proteomics applications**: Mass spectrometry data with heteroscedastic noise
-- **Microarray data**: Gene expression data with intensity-dependent variance
-- **Statistical analysis preparation**: Before applying methods that assume constant variance
-- **Cross-sample comparison**: When samples need to be on truly comparable scales
+- **Intensity-dependent variance**: data shows increasing variance with higher intensities.
+- **Proteomics applications**: mass-spectrometry data with heteroscedastic noise.
+- **Microarray data**: gene expression with intensity-dependent variance.
+- **Statistical analysis preparation**: before methods that assume constant variance.
+- **Cross-sample comparison**: when samples must be on truly comparable scales.
 
 Considerations
 --------------
 
-- **R dependency**: Requires R installation and the ``vsn`` Bioconductor package
-- **Computational cost**: More expensive than simple scaling methods due to parameter estimation
-- **Data requirements**: Works best with sufficient data points for robust parameter estimation
-- **Transformation interpretation**: Results are on a transformed scale, not original units
-- **Missing values**: Handles missing values but may affect parameter estimation quality
-
-Installation Requirements
--------------------------
-
-The ``VSNNormalizer`` requires a working R installation and the ``vsn`` package from Bioconductor.
-
-Installing R
-~~~~~~~~~~~~
-
-Follow the instructions for your operating system:
-
-*   **Windows:** Download the installer from the `Comprehensive R Archive Network (CRAN) <https://cran.r-project.org/bin/windows/base/>`_ and follow the installation wizard.
-*   **macOS:** Download the appropriate ``.pkg`` file for your system from `CRAN <https://cran.r-project.org/bin/macosx/>`_ and run the installer.
-*   **Linux:** Use your distribution's package manager. For example:
-    *   Debian/Ubuntu: ``sudo apt update && sudo apt install r-base r-base-dev``
-    *   Fedora/CentOS/RHEL: ``sudo dnf install R``
-    *   Consult the `CRAN instructions for Linux <https://cran.r-project.org/bin/linux/>`_ for specific distributions and potential repository configurations.
-
-Installing the 'vsn' R package
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Once R is installed, open an R console or terminal and run the following commands to install the ``vsn`` package using the Bioconductor package manager:
-
-.. code-block:: r
-
-    if (!requireNamespace("BiocManager", quietly = TRUE))
-        install.packages("BiocManager")
-
-    BiocManager::install("vsn")
-
-This will install ``vsn`` and any necessary dependencies from Bioconductor.
-
+- **At least two samples** are required (rows of the input matrix). Single-sample inputs raise ``ValueError``.
+- **NaN / Inf** values must be handled before calling ``normalize``; non-finite cells raise ``ValueError``.
+- **Computational cost**: more expensive than simple scaling methods due to L-BFGS-B parameter estimation, but typically completes in well under a second on realistic proteomics matrices.
+- **Output scale**: the result is on a log2-comparable, variance-stabilized scale; not in original intensity units.
+- **Hyperparameter**: ``lts_quantile=0.75`` is the pronoms default; pass ``1.0`` to disable the LTS step (single ML fit).
 
 See Also
 --------
 
-- :doc:`median_normalizer`: For simple scaling-based normalization
-- :doc:`quantile_normalizer`: For making distributions identical across samples
-- :doc:`mad_normalizer`: For robust normalization using median absolute deviation
-- :doc:`rank_normalizer`: For rank-based transformation
+- :doc:`median_normalizer`: simple scaling-based normalization.
+- :doc:`quantile_normalizer`: making distributions identical across samples.
+- :doc:`mad_normalizer`: robust normalization via median absolute deviation.
+- :doc:`rank_normalizer`: rank-based transformation.
 
 Citation
 --------

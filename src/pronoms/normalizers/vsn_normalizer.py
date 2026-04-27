@@ -1,56 +1,88 @@
 """
 VSN (Variance Stabilizing Normalization) Normalizer for proteomics data.
 
-This module provides a class for VSN normalization of proteomics data,
-which is implemented using the vsn R package.
+This module provides ``VSNNormalizer``, a pure-Python implementation of
+Huber et al.'s VSN algorithm. Earlier releases of pronoms used the
+Bioconductor ``vsn`` R package via ``rpy2``; that dependency has been
+replaced by a vectorized NumPy/SciPy implementation in
+``pronoms.normalizers._vsn_engine``. The public class signature is
+preserved.
 """
 
+from __future__ import annotations
+
 import warnings
-from typing import Optional
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 from ..utils.plotting import plot_comparison_hexbin
-from ..utils.r_interface import run_r_script, setup_r_environment
 from ..utils.validators import check_nan_inf, validate_input_data
+from . import _vsn_engine
 
 
 class VSNNormalizer:
-    """
-    Normalizer that performs Variance Stabilizing Normalization using the R vsn package.
+    """Variance-stabilizing normalization (Huber et al., 2002).
 
-    VSN is a normalization method that stabilizes the variance across the intensity range,
-    making the variance independent of the mean intensity. This is particularly useful
-    for proteomics data where the variance often increases with the mean.
+    The fitted model is ``h_ij = arsinh(exp(beta_j) * y_ij + a_j)``, which
+    behaves like ``log(y_ij)`` for large ``y_ij`` and is well-defined for
+    zero or negative inputs. Per-sample offset ``a_j`` and log-scale
+    factor ``beta_j`` are estimated by maximum profile likelihood with a
+    least-trimmed-squares robustification step. The output is on a
+    log2-comparable scale.
+
+    Parameters
+    ----------
+    calib : str, optional
+        Calibration method, by default ``"affine"``. ``"affine"`` is the
+        only supported value; other values raise ``ValueError``.
+    reference_sample : Optional[int], optional
+        **Deprecated.** Always treated as ``None`` regardless of value.
+        Pass ``None`` (the default) to silence the deprecation warning.
+        Will be removed in a future major release.
+    lts_quantile : float, optional
+        Quantile for the Least-Trimmed-Squares robust step, by default
+        ``0.75``. Must lie in (0, 1]. ``1.0`` disables the robust step.
 
     Attributes
     ----------
-    vsn_params : Optional[Dict[str, Any]]
-        Parameters from the VSN normalization process.
-        Only available after calling normalize().
+    vsn_params : Optional[dict]
+        Fitted parameters as a plain Python dict. Only populated after
+        ``normalize()``. Keys:
+
+        ``coefficients`` : np.ndarray, shape ``(1, n_samples, 2)``
+            Per-sample (a, beta) coefficients in R-VSN's layout. Slice
+            ``[0, :, 0]`` is ``a``; ``[0, :, 1]`` is ``beta = log(b)``.
+        ``a`` : np.ndarray, shape ``(n_samples,)``
+            Per-sample offset.
+        ``b_log`` : np.ndarray, shape ``(n_samples,)``
+            Per-sample log-scale factor; the actual scaling is
+            ``np.exp(b_log)``.
+        ``sigsq`` : float
+            Profiled variance on the natural ``arsinh`` scale.
+        ``hoffset`` : float
+            Offset applied during transform to put output on a log2-like
+            scale.
+        ``mu`` : np.ndarray, shape ``(n_features,)``
+            Per-feature mean of the transformed data on the natural
+            ``arsinh`` scale (rows trimmed by LTS in iterations >1
+            appear as ``NaN``, matching R's bookkeeping).
+        ``converged`` : bool
+            Whether the inner L-BFGS-B converged on the final LTS
+            iteration.
+        ``n_lts_iter`` : int
+            Number of LTS iterations executed (capped at 7).
     """
 
-    def __init__(self, calib: str = "affine", reference_sample: Optional[int] = None, lts_quantile: float = 0.75):
-        """
-        Initialize the VSNNormalizer.
-
-        Parameters
-        ----------
-        calib : str, optional
-            Calibration method, by default "affine".
-            Options: "affine", "none", "shift", "maximum".
-        reference_sample : Optional[int], optional
-            **Deprecated.** Always treated as ``None`` regardless of value.
-            R-VSN's ``reference`` argument expects a previously fitted ``vsn``
-            object, not a single-sample index, so the parameter as exposed
-            here cannot be implemented faithfully and will be removed in a
-            future major release. Pass ``None`` (the default) to silence the
-            deprecation warning.
-        lts_quantile : float, optional
-            Quantile for the resistant regression (Linear Threshold Shift), by default 0.75.
-            Controls the robustness of the normalization. Must be between 0 and 1.
-        """
+    def __init__(
+        self,
+        calib: str = "affine",
+        reference_sample: int | None = None,
+        lts_quantile: float = 0.75,
+    ) -> None:
+        if calib != "affine":
+            raise ValueError(f"Only calib='affine' is supported by the native VSN engine; got {calib!r}.")
         self.calib = calib
         if reference_sample is not None:
             warnings.warn(
@@ -63,140 +95,68 @@ class VSNNormalizer:
                 stacklevel=2,
             )
         self.reference_sample = reference_sample
-        if not 0 <= lts_quantile <= 1:
+        if not 0 < lts_quantile <= 1:
             raise ValueError("lts_quantile must be between 0 and 1")
         self.lts_quantile = lts_quantile
-        self.vsn_params = None
-
-        # Check R environment and required packages
-        self._check_r_dependencies()
-
-    def _check_r_dependencies(self):
-        """Check if required R packages are installed."""
-        try:
-            setup_r_environment(["vsn"])
-        except Exception as e:
-            print(f"Warning: {e!s}")
-            print("VSN normalization will not be available.")
+        self.vsn_params: dict[str, Any] | None = None
 
     def normalize(
-        self, X: np.ndarray, protein_ids: Optional[list[str]] = None, sample_ids: Optional[list[str]] = None
+        self,
+        X: np.ndarray,
+        protein_ids: list[str] | None = None,
+        sample_ids: list[str] | None = None,
     ) -> np.ndarray:
-        """
-        Perform VSN normalization on input data X.
+        """Fit VSN on ``X`` and return the transformed matrix.
 
         Parameters
         ----------
         X : np.ndarray
-            Input data matrix with shape (n_samples, n_features).
-            Each row represents a sample, each column represents a feature/protein.
+            Input data with shape ``(n_samples, n_features)``.
         protein_ids : Optional[List[str]], optional
-            Protein/feature identifiers, by default None (uses column indices).
+            Unused; retained for API compatibility with the previous
+            R-backed implementation.
         sample_ids : Optional[List[str]], optional
-            Sample identifiers, by default None (uses row indices).
+            Unused; retained for API compatibility.
 
         Returns
         -------
         np.ndarray
-            Normalized data matrix with the same shape as X.
+            Normalized data with the same shape as ``X``, on a
+            log2-comparable (variance-stabilized) scale.
 
         Raises
         ------
         ValueError
-            If input data contains NaN or Inf values or if R integration fails.
+            If the input contains NaN or Inf, or if the native VSN
+            engine fails to fit (e.g., fewer than 2 samples).
         """
-        # Validate input data
+        del protein_ids, sample_ids  # accepted for back-compat, not used
         X = validate_input_data(X)
-
-        # Check for NaN or Inf values
         has_nan_inf, _ = check_nan_inf(X)
         if has_nan_inf:
             raise ValueError("Input data contains NaN or Inf values. Please handle these values before normalization.")
 
-        # Generate default IDs if not provided
-        if protein_ids is None:
-            protein_ids = [f"Protein_{i}" for i in range(X.shape[1])]
-
-        if sample_ids is None:
-            sample_ids = [f"Sample_{i}" for i in range(X.shape[0])]
-
-        # Create R script for VSN normalization
-        r_script = self._create_vsn_script()
-
+        # Native engine works in (n_features, n_samples) orientation.
         try:
-            # Transpose data for R script since VSN expects proteins as rows
-            # and samples as columns in the R environment
-            X_transposed = X.T
-
-            # Run R script with transposed data
-            results = run_r_script(r_script, data=X_transposed, row_names=protein_ids, col_names=sample_ids)
-
-            # Extract normalized data and transpose back to original orientation
-            if "normalized_data" in results:
-                normalized_data = results["normalized_data"].T
-            else:
-                raise ValueError("VSN normalization failed to return normalized data")
-
-            # Store VSN parameters
-            if "parameters" in results:
-                # Directly store the parameters dict from results
-                self.vsn_params = results["parameters"]
-
-            return normalized_data
-
+            X_t = np.ascontiguousarray(X.T, dtype=np.float64)
+            normalized_t, fit = _vsn_engine.fit_transform(
+                X_t,
+                lts_quantile=self.lts_quantile,
+            )
         except Exception as e:
             raise ValueError(f"VSN normalization failed: {e!s}") from e
 
-    def _create_vsn_script(self) -> str:
-        """
-        Create R script for VSN normalization using ExpressionSet.
-
-        Returns
-        -------
-        str
-            R script for VSN normalization.
-        """
-        # Base R script parts
-        script_start = """
-        # Load required packages
-        library(vsn)
-        library(Biobase)
-
-        # Check if input_data exists
-        if (!exists("input_data")) {
-            stop("Input data matrix not provided")
+        self.vsn_params = {
+            "coefficients": fit.coefficients,
+            "a": fit.a,
+            "b_log": fit.b_log,
+            "sigsq": fit.sigsq,
+            "hoffset": fit.hoffset,
+            "mu": fit.mu,
+            "converged": fit.converged,
+            "n_lts_iter": fit.n_lts_iter,
         }
-
-        # Create ExpressionSet (should inherit names from input_data)
-        eset <- tryCatch({
-            ExpressionSet(assayData = input_data)
-        }, error = function(e) {
-            stop(paste("Error creating ExpressionSet:", e$message))
-        })
-        """
-
-        # ``reference_sample`` is deprecated; the script always emits the
-        # default vsn2 call. See __init__ for the rationale.
-        vsn2_call = f"vsn2(eset, minDataPointsPerStratum = 3, lts.quantile = {self.lts_quantile})"
-
-        script_end = f"""
-        # Run VSN normalization on the ExpressionSet
-        vsn_fit <- tryCatch({{
-            {vsn2_call}
-        }}, error = function(e) {{
-            stop(paste("Error during vsn2 execution:", e$message))
-        }})
-
-        # Get normalized data
-        normalized_data <- exprs(vsn_fit)
-
-        # Extract parameters (Note: @stdev removed as it's not a standard slot for vsn object here)
-        parameters <- list(
-            coefficients = vsn_fit@coefficients
-        )
-        """
-
-        return script_start + script_end
+        return np.ascontiguousarray(normalized_t.T)
 
     def plot_comparison(
         self,
@@ -206,27 +166,21 @@ class VSNNormalizer:
         gridsize: int = 50,
         cmap: str = "viridis",
     ) -> plt.Figure:
-        """
-        Plot comparison using hexbin plot.
-        For VSN, this plots log2(Original + 1) vs Normalized (glog2).
+        """Plot a hexbin comparison of raw vs. VSN-normalized intensities.
 
         Parameters
         ----------
         before_data : np.ndarray
             Data before normalization.
         after_data : np.ndarray
-            Data after normalization (normalized using this instance).
+            Data after normalization (output of ``normalize``).
         figsize : Tuple[int, int], optional
-            Figure size, by default (8, 8).
         gridsize : int, optional
-            Number of hexagons in the x-direction, by default 50.
         cmap : str, optional
-            Colormap for the hexbins, by default 'viridis'.
 
         Returns
         -------
         plt.Figure
-            Matplotlib figure object.
         """
         return plot_comparison_hexbin(
             before_data=before_data,
